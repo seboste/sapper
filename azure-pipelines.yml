@@ -13,13 +13,22 @@ steps:
      command: 'get'
      arguments: '-d'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
+   displayName: "Get Dependencies"
  - task: Go@0
    inputs:
      command: 'build'
      arguments: '-v'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
+   displayName: "Build"
  - task: Go@0
    inputs:
      command: 'test'
-     arguments: './... -json'
+     arguments: './... -json | tee /tmp/test_result.json'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
+   displayName: "Test"
+ - task: PublishTestResults@2
+   inputs:
+     testResultsFormat: 'JUnit'
+     testResultsFiles: '/tmp/test_result.json'
+     failTaskOnFailedTests: true
+   displayName: "Publish Test Results"
