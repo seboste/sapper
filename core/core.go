@@ -10,7 +10,7 @@ type Core struct {
 }
 
 func (c Core) New() {
-	fmt.Println("new")
+	fmt.Prinstln("new")
 }
 
 func (c Core) Add() {
