@@ -5,6 +5,7 @@ import "testing"
 func TestNew(t *testing.T) {
 	c := Core{}
 	c.New()
+	t.Fail()
 }
 
 func TestAdd(t *testing.T) {
