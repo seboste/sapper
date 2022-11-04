@@ -29,11 +29,11 @@ steps:
      arguments: '-u github.com/jstemmer/go-junit-report'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
    displayName: "Get Test Dependencies"   
- - task: Go@0
+ - task: Bash@3
+   name: "go_test"
    inputs:
-     command: 'test'
-     arguments: '-v ./...  2>&1 | $(go env GOPATH)/bin/go-junit-report | tee test_report.xml'
-     workingDirectory: '$(System.DefaultWorkingDirectory)'
+     targetType: "inline"
+     script: "go test -v ./... 2>&1 | $(go env GOPATH)/bin/go-junit-report | tee test_report.xml"
    displayName: "Test"
  - task: PublishTestResults@2
    condition: always()
