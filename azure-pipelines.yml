@@ -17,6 +17,7 @@ variables:
 
 steps:
 - script: |
+    echo 'starting Set up the Go workspace'
     mkdir -p '$(GOBIN)'
     mkdir -p '$(GOPATH)/pkg'
     mkdir -p '$(modulePath)'
@@ -25,9 +26,11 @@ steps:
     mv !(gopath) '$(modulePath)'
     echo '##vso[task.prependpath]$(GOBIN)'
     echo '##vso[task.prependpath]$(GOROOT)/bin'
+    echo 'ended Set up the Go workspace'
   displayName: 'Set up the Go workspace'
 
 - script: |
+    echo 'starting Get dependencies, then build'
     go version
     go get -v -t -d ./...
     if [ -f Gopkg.toml ]; then
@@ -35,5 +38,6 @@ steps:
         dep ensure
     fi
     go build -v .
+    echo 'ended Get dependencies, then build'
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, then build'
