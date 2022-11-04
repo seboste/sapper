@@ -1,4 +1,7 @@
-trigger: 
+trigger:
+  - main
+
+pr:
   - main
  
 pool:
@@ -23,12 +26,13 @@ steps:
  - task: Go@0
    inputs:
      command: 'test'
-     arguments: './... -json | tee /tmp/test_result.json'
+     arguments: './... -json | tee test_result.json'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
    displayName: "Test"
  - task: PublishTestResults@2
+   condition: always()
    inputs:
      testResultsFormat: 'JUnit'
-     testResultsFiles: '/tmp/test_result.json'
+     testResultsFiles: 'test_result.json'
      failTaskOnFailedTests: true
    displayName: "Publish Test Results"
