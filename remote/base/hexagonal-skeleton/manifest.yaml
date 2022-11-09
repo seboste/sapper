@@ -1,0 +1,9 @@
+---
+id : base-hexagonal
+description : template of a hexagonal microservice
+parameters : 
+  - parameter :
+      name : NAME
+  - parameter : 
+      name : VERSION
+      default : 1.0.0
