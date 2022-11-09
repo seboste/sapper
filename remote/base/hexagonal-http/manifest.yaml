@@ -1,0 +1,4 @@
+---
+id : base-hexagonal
+description : simple http microservice
+dependencies : [ base-hexagonal, handler-httplib ]

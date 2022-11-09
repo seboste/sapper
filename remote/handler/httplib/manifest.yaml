@@ -1,0 +1,4 @@
+---
+id : handler-httplib
+description : http handler
+dependencies : [ base-hexagonal ]
