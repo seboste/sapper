@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +15,9 @@ var addServiceCmd = &cobra.Command{
 	Use:   "add [template]",
 	Short: "Adds a new C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Add()
+		if err := serviceApi.Add("test-service", "0.0.1", "base/hexagonal-skeleton", "./test"); err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
@@ -29,7 +33,7 @@ var buildServiceCmd = &cobra.Command{
 	Use:   "build [template]",
 	Short: "Builds the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Build()
+		serviceApi.Build("./test/test-service")
 	},
 }
 

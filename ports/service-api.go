@@ -1,9 +1,9 @@
 package ports
 
 type ServiceApi interface {
-	Add()
+	Add(name string, version string, templateName string, parentDir string) error
 	Update()
-	Build()
+	Build(path string) error
 	Test()
 	Deploy()
 }
