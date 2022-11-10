@@ -6,7 +6,7 @@ sapper brick add
 sapper brick list
 sapper brick search
 
-sapper service new
+sapper service add
 sapper service update
 sapper service build
 sapper service test
