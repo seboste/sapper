@@ -76,6 +76,29 @@ func makeFilesystemBrick(path string) (filesystemBrick, error) {
 	if err != nil {
 		return b, err
 	}
+
+	err = filepath.Walk(path,
+		func(p string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			_, file := filepath.Split(p)
+
+			if file == "manifest.yaml" {
+				return nil //skip manifest.yaml
+			}
+
+			if info.IsDir() {
+				//skip directories
+				return nil
+			}
+
+			relPath, _ := filepath.Rel(path, p)
+			b.Files = append(b.Files, relPath)
+			return nil
+		})
+
 	return b, nil
 }
 
