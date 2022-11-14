@@ -80,10 +80,10 @@ func makeFilesystemBrick(path string) (filesystemBrick, error) {
 }
 
 type FilesystemBrickDB struct {
-	bricks []filesystemBrick
+	bricks []ports.Brick
 }
 
-func (db FilesystemBrickDB) Init(basePath string) error {
+func (db *FilesystemBrickDB) Init(basePath string) error {
 	err := filepath.Walk(basePath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -106,12 +106,23 @@ func (db FilesystemBrickDB) Init(basePath string) error {
 	return err
 }
 
-func (db FilesystemBrickDB) Bricks(kind ports.BrickKind) []ports.Brick {
+func (db *FilesystemBrickDB) Bricks(kind ports.BrickKind) []ports.Brick {
+	filteredBricks := []ports.Brick{}
+	for _, b := range db.bricks {
+		if b.GetKind() == kind {
+			filteredBricks = append(filteredBricks, b)
+		}
+	}
+	return filteredBricks
+}
+
+func (db *FilesystemBrickDB) Brick(id string) ports.Brick {
+	for _, b := range db.bricks {
+		if b.GetId() == id {
+			return b
+		}
+	}
 	return nil
 }
 
-func (db FilesystemBrickDB) Brick(id string) ports.Brick {
-	return nil
-}
-
-var _ ports.BrickDB = FilesystemBrickDB{}
+var _ ports.BrickDB = &FilesystemBrickDB{}

@@ -14,5 +14,5 @@ func TestList(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	b := Brick{}
-	b.Search()
+	b.Search("hallo")
 }
