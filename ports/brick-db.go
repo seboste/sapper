@@ -8,22 +8,22 @@ type BrickParameters struct {
 type BrickKind int
 
 const (
-	Template = iota
+	Template BrickKind = iota
 	Extension
 )
 
 type Brick interface {
-	GetID() string
+	GetId() string
 	GetDescription() string
 	GetVersion() string
 	GetKind() BrickKind
-	GetParameters() BrickParameters
-	GetDependencies() string
+	GetParameters() []BrickParameters
+	GetDependencies() []string
 	GetFiles() []string
 }
 
 type BrickDB interface {
-	Init(Path string)
-	GetBricks(kind BrickKind) []Brick
-	GetBrick(id string) Brick
+	Init(Path string) error
+	Bricks(kind BrickKind) []Brick
+	Brick(id string) Brick
 }

@@ -1,9 +1,8 @@
 ---
-id : base-hexagonal
+id : base-hexagonal-skeleton
+kind: template
 description : template of a hexagonal microservice
 parameters : 
-  - parameter :
-      name : NAME
-  - parameter : 
-      name : VERSION
-      default : 1.0.0
+  - name : NAME
+  - name : VERSION
+    default : 1.0.0

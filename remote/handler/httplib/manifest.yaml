@@ -1,4 +1,5 @@
 ---
 id : handler-httplib
+kind: extension
 description : http handler
 dependencies : [ base-hexagonal ]
