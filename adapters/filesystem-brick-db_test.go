@@ -121,3 +121,42 @@ dependencies :
 		})
 	}
 }
+
+func TestFilesystemBrickDB_Bricks(t *testing.T) {
+	brickTemp := filesystemBrick{Id: "test1_templ", Description: "desc", Kind: BrickKind(ports.Template)}
+	brickExt := filesystemBrick{Id: "test2_ext", Description: "desc", Kind: BrickKind(ports.Extension)}
+
+	type fields struct {
+		bricks []ports.Brick
+	}
+	type args struct {
+		kind ports.BrickKind
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []ports.Brick
+	}{
+		{name: "filter extensions",
+			fields: fields{bricks: []ports.Brick{brickTemp, brickExt}},
+			args:   args{kind: ports.Extension},
+			want:   []ports.Brick{brickExt},
+		},
+		{name: "filter template",
+			fields: fields{bricks: []ports.Brick{brickTemp, brickExt}},
+			args:   args{kind: ports.Template},
+			want:   []ports.Brick{brickTemp},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := &FilesystemBrickDB{
+				bricks: tt.fields.bricks,
+			}
+			if got := db.Bricks(tt.args.kind); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FilesystemBrickDB.Bricks() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
