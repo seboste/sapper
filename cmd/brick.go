@@ -1,8 +1,15 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/seboste/sapper/ports"
 	"github.com/spf13/cobra"
 )
+
+func Print(b ports.Brick) {
+	fmt.Println(b.GetId(), b.GetVersion(), b.GetDescription())
+}
 
 var brickCmd = &cobra.Command{
 	Use:   "brick",
@@ -21,15 +28,27 @@ var listBrickCmd = &cobra.Command{
 	Use:   "list [template]",
 	Short: "Displays information about building bricks",
 	Run: func(cmd *cobra.Command, args []string) {
-		brickApi.List()
+		bricks := brickApi.List()
+		fmt.Printf("found a total of %d bricks\n", len(bricks))
+		for _, b := range bricks {
+			Print(b)
+		}
 	},
 }
 
 var searchBrickCmd = &cobra.Command{
-	Use:   "search [template]",
-	Short: "Searches for building bricks",
+	Use:   "search <term>",
+	Short: "Searches for building bricks in the id or description",
 	Run: func(cmd *cobra.Command, args []string) {
-		brickApi.Search()
+		if len(args) < 1 {
+			fmt.Println("Unable to search for building bricks. The search term is missing")
+			return
+		}
+		bricks := brickApi.Search(args[0])
+		fmt.Printf("found a total of %d bricks\n", len(bricks))
+		for _, b := range brickApi.Search(args[0]) {
+			Print(b)
+		}
 	},
 }
 

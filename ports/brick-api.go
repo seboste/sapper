@@ -2,6 +2,6 @@ package ports
 
 type BrickApi interface {
 	Add()
-	List()
-	Search()
+	List() []Brick
+	Search(term string) []Brick
 }
