@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -93,9 +94,9 @@ dependencies :
 		t.Run(tt.name, func(t *testing.T) {
 
 			//1. prepare test
-			dir, _ := os.MkdirTemp("", "example")
+			dir, _ := ioutil.TempDir("", "example")
 			defer os.RemoveAll(dir) // clean up
-			os.WriteFile(filepath.Join(dir, "manifest.yaml"), []byte(tt.yaml), 0666)
+			ioutil.WriteFile(filepath.Join(dir, "manifest.yaml"), []byte(tt.yaml), 0666)
 
 			for _, file := range tt.files {
 				abspath := filepath.Join(dir, file)
@@ -104,7 +105,7 @@ dependencies :
 				if err := os.MkdirAll(filedir, 0777); err != nil {
 					log.Fatalln(err)
 				}
-				if err := os.WriteFile(abspath, []byte{}, 0666); err != nil {
+				if err := ioutil.WriteFile(abspath, []byte{}, 0666); err != nil {
 					log.Fatalln(err)
 				}
 			}
@@ -201,7 +202,7 @@ func TestFilesystemBrickDB_Brick(t *testing.T) {
 
 func TestFilesystemBrickDB_Init(t *testing.T) {
 
-	tempDir, _ := os.MkdirTemp("", "example_db")
+	tempDir, _ := ioutil.TempDir("", "example_db")
 	defer os.RemoveAll(tempDir) // clean up
 
 	initiallyAvailableBrick := filesystemBrick{Id: "initial", Kind: BrickKind(ports.Extension)}
@@ -252,7 +253,7 @@ description : test brick 2
 			for _, in := range tt.input {
 				brickDir := filepath.Join(tt.args.basePath, in.name)
 				os.Mkdir(brickDir, 0777)
-				os.WriteFile(filepath.Join(brickDir, "manifest.yaml"), []byte(in.yaml), 0666)
+				ioutil.WriteFile(filepath.Join(brickDir, "manifest.yaml"), []byte(in.yaml), 0666)
 			}
 			//2. execute test
 			db := &FilesystemBrickDB{
