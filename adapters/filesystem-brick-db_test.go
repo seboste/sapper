@@ -160,3 +160,110 @@ func TestFilesystemBrickDB_Bricks(t *testing.T) {
 		})
 	}
 }
+
+func TestFilesystemBrickDB_Brick(t *testing.T) {
+	someBrick := filesystemBrick{Id: "some_id"}
+	someOtherBrick := filesystemBrick{Id: "some_other_id"}
+	type fields struct {
+		bricks []ports.Brick
+	}
+	type args struct {
+		id string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   ports.Brick
+	}{
+		{name: "brick available",
+			fields: fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
+			args:   args{id: "some_id"},
+			want:   someBrick,
+		},
+		{name: "brick not available",
+			fields: fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
+			args:   args{id: "some_unknown_id"},
+			want:   nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := &FilesystemBrickDB{
+				bricks: tt.fields.bricks,
+			}
+			if got := db.Brick(tt.args.id); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FilesystemBrickDB.Brick() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilesystemBrickDB_Init(t *testing.T) {
+
+	tempDir, _ := os.MkdirTemp("", "example_db")
+	defer os.RemoveAll(tempDir) // clean up
+
+	initiallyAvailableBrick := filesystemBrick{Id: "initial", Kind: BrickKind(ports.Extension)}
+
+	type fields struct {
+		bricks []ports.Brick
+	}
+	type args struct {
+		basePath string
+	}
+	type input struct {
+		name string
+		yaml string
+	}
+	tests := []struct {
+		name    string
+		input   []input
+		fields  fields
+		args    args
+		wantErr bool
+		want    []ports.Brick
+	}{
+		{
+			name:   "init",
+			fields: fields{bricks: []ports.Brick{initiallyAvailableBrick}},
+			args:   args{basePath: filepath.Join(tempDir, "example_db")},
+			input: []input{{name: "brick_1", yaml: `id : brick_1
+kind: extension
+description : test brick 1
+`},
+				{name: "brick_2", yaml: `id : brick_2
+kind: extension
+description : test brick 2
+`},
+			},
+			wantErr: false,
+			want: []ports.Brick{
+				initiallyAvailableBrick,
+				filesystemBrick{Id: "brick_1", Description: "test brick 1", Kind: BrickKind(ports.Extension)},
+				filesystemBrick{Id: "brick_2", Description: "test brick 2", Kind: BrickKind(ports.Extension)},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//1. prepare test
+			os.Mkdir(tt.args.basePath, 0777)
+			for _, in := range tt.input {
+				brickDir := filepath.Join(tt.args.basePath, in.name)
+				os.Mkdir(brickDir, 0777)
+				os.WriteFile(filepath.Join(brickDir, "manifest.yaml"), []byte(in.yaml), 0666)
+			}
+			//2. execute test
+			db := &FilesystemBrickDB{
+				bricks: tt.fields.bricks,
+			}
+			if err := db.Init(tt.args.basePath); (err != nil) != tt.wantErr {
+				t.Errorf("FilesystemBrickDB.Init() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !reflect.DeepEqual(db.bricks, tt.want) {
+				t.Errorf("FilesystemBrickDB.bricks = %v, want %v", db.bricks, tt.want)
+			}
+		})
+	}
+}
