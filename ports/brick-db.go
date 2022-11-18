@@ -19,6 +19,7 @@ type Brick interface {
 	GetKind() BrickKind
 	GetParameters() []BrickParameters
 	GetDependencies() []string
+	GetBasePath() string
 	GetFiles() []string
 }
 

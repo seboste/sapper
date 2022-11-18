@@ -15,7 +15,7 @@ var addServiceCmd = &cobra.Command{
 	Use:   "add [template]",
 	Short: "Adds a new C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := serviceApi.Add("test-service", "0.0.1", "base/hexagonal-skeleton", "./test"); err != nil {
+		if err := serviceApi.Add("test-service", "0.0.1", "base-hexagonal-skeleton", "./test"); err != nil {
 			fmt.Println(err)
 		}
 	},

@@ -58,6 +58,9 @@ func TestBrickKind_String(t *testing.T) {
 }
 
 func Test_makeFilesystemBrick(t *testing.T) {
+	tempDir, _ := ioutil.TempDir("", "example")
+	defer os.RemoveAll(tempDir) // clean up
+
 	tests := []struct {
 		name    string
 		yaml    string
@@ -85,6 +88,7 @@ dependencies :
 				Kind:         BrickKind(ports.Extension),
 				Parameters:   []ports.BrickParameters{{Name: "param1", Default: "default"}, {Name: "param2", Default: ""}},
 				Dependencies: []string{"dep1", "dep2"},
+				BasePath:     filepath.Join(tempDir, "test"),
 				Files:        []string{"a", "b/c"},
 			},
 			wantErr: false,
@@ -94,12 +98,14 @@ dependencies :
 		t.Run(tt.name, func(t *testing.T) {
 
 			//1. prepare test
-			dir, _ := ioutil.TempDir("", "example")
-			defer os.RemoveAll(dir) // clean up
-			ioutil.WriteFile(filepath.Join(dir, "manifest.yaml"), []byte(tt.yaml), 0666)
+			brickDir := filepath.Join(tempDir, tt.want.Id)
+			if err := os.MkdirAll(brickDir, 0777); err != nil {
+				log.Fatalln(err)
+			}
+			ioutil.WriteFile(filepath.Join(brickDir, "manifest.yaml"), []byte(tt.yaml), 0666)
 
 			for _, file := range tt.files {
-				abspath := filepath.Join(dir, file)
+				abspath := filepath.Join(brickDir, file)
 				filedir, _ := filepath.Split(abspath)
 
 				if err := os.MkdirAll(filedir, 0777); err != nil {
@@ -111,7 +117,7 @@ dependencies :
 			}
 
 			//2. execute test
-			got, err := makeFilesystemBrick(dir)
+			got, err := makeFilesystemBrick(brickDir)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeFilesystemBrick() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -241,8 +247,8 @@ description : test brick 2
 			wantErr: false,
 			want: []ports.Brick{
 				initiallyAvailableBrick,
-				filesystemBrick{Id: "brick_1", Description: "test brick 1", Kind: BrickKind(ports.Extension)},
-				filesystemBrick{Id: "brick_2", Description: "test brick 2", Kind: BrickKind(ports.Extension)},
+				filesystemBrick{Id: "brick_1", Description: "test brick 1", Kind: BrickKind(ports.Extension), BasePath: filepath.Join(tempDir, "example_db/brick_1")},
+				filesystemBrick{Id: "brick_2", Description: "test brick 2", Kind: BrickKind(ports.Extension), BasePath: filepath.Join(tempDir, "example_db/brick_2")},
 			},
 		},
 	}
