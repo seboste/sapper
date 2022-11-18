@@ -11,11 +11,20 @@ var serviceCmd = &cobra.Command{
 	Short: "Manage C++ microservices",
 }
 
+type MapBasedParameterResolver struct {
+	parameters map[string]string
+}
+
+func (r MapBasedParameterResolver) Resolve(key string) string {
+	return r.parameters[key]
+}
+
 var addServiceCmd = &cobra.Command{
 	Use:   "add [template]",
 	Short: "Adds a new C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := serviceApi.Add("test-service", "0.0.1", "base-hexagonal-skeleton", "./test"); err != nil {
+		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": "test-service"}}
+		if err := serviceApi.Add("base-hexagonal-skeleton", "./test", r); err != nil {
 			fmt.Println(err)
 		}
 	},

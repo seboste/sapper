@@ -1,7 +1,7 @@
 package ports
 
 type ServiceApi interface {
-	Add(name string, version string, templateName string, parentDir string) error
+	Add(templateName string, parentDir string, parameterResolver ParameterResolver) error
 	Update()
 	Build(path string) error
 	Test()

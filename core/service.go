@@ -12,10 +12,11 @@ import (
 )
 
 type Service struct {
-	Db ports.BrickDB
+	Db                ports.BrickDB
+	ParameterResolver ports.ParameterResolver
 }
 
-func (s Service) Add(name string, version string, templateName string, parentDir string) error {
+func (s Service) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
 
 	template := s.Db.Brick(templateName)
 	if template == nil {
@@ -24,10 +25,15 @@ func (s Service) Add(name string, version string, templateName string, parentDir
 
 	parameters := make(map[string]string)
 	for _, p := range template.GetParameters() {
-		parameters[p.Name] = p.Default
+		value := parameterResolver.Resolve(p.Name)
+		if value == "" {
+			value = p.Default
+		}
+		if value == "" {
+			return fmt.Errorf("unable to resolve value for parameter %s", p.Name)
+		}
+		parameters[p.Name] = value
 	}
-
-	parameters["NAME"] = name
 
 	outputBasePath := filepath.Join(parentDir, parameters["NAME"])
 	if err := os.MkdirAll(outputBasePath, os.ModePerm); err != nil {
