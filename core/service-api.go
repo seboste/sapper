@@ -11,12 +11,12 @@ import (
 	"github.com/seboste/sapper/ports"
 )
 
-type Service struct {
+type ServiceApi struct {
 	Db                ports.BrickDB
 	ParameterResolver ports.ParameterResolver
 }
 
-func (s Service) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
+func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
 
 	template := s.Db.Brick(templateName)
 	if template == nil {
@@ -71,11 +71,11 @@ func (s Service) Add(templateName string, parentDir string, parameterResolver po
 	return nil
 }
 
-func (s Service) Update() {
+func (s ServiceApi) Update() {
 	fmt.Println("update")
 }
 
-func (s Service) Build(path string) error {
+func (s ServiceApi) Build(path string) error {
 	cmd := exec.Command("make", "build", "-B")
 	cmd.Dir = path
 	cmd.Stdout = os.Stdout
@@ -84,12 +84,12 @@ func (s Service) Build(path string) error {
 	return err
 }
 
-func (s Service) Test() {
+func (s ServiceApi) Test() {
 	fmt.Println("test")
 }
 
-func (s Service) Deploy() {
+func (s ServiceApi) Deploy() {
 	fmt.Println("deploy")
 }
 
-var _ ports.ServiceApi = Service{}
+var _ ports.ServiceApi = ServiceApi{}

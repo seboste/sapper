@@ -15,6 +15,6 @@ func main() {
 		fmt.Println(err)
 	}
 
-	cmd.SetApis(core.Brick{Db: brick_db}, core.Service{Db: brick_db}, core.Remote{})
+	cmd.SetApis(core.BrickApi{Db: brick_db}, core.ServiceApi{Db: brick_db}, core.RemoteApi{})
 	cmd.Execute()
 }
