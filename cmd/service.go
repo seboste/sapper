@@ -50,7 +50,12 @@ var buildServiceCmd = &cobra.Command{
 	Use:   "build [template]",
 	Short: "Builds the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Build("./test/test-service")
+
+		if len(args) < 1 {
+			fmt.Println("service folder argument is missing")
+			return
+		}
+		serviceApi.Build(args[0])
 	},
 }
 
