@@ -52,6 +52,7 @@ type filesystemBrick struct {
 	Kind         BrickKind
 	Parameters   []ports.BrickParameters
 	Dependencies []string
+	BasePath     string
 	Files        []string
 }
 
@@ -61,6 +62,7 @@ func (b filesystemBrick) GetVersion() string                     { return b.Vers
 func (b filesystemBrick) GetKind() ports.BrickKind               { return ports.BrickKind(b.Kind) }
 func (b filesystemBrick) GetParameters() []ports.BrickParameters { return b.Parameters }
 func (b filesystemBrick) GetDependencies() []string              { return b.Dependencies }
+func (b filesystemBrick) GetBasePath() string                    { return b.BasePath }
 func (b filesystemBrick) GetFiles() []string                     { return b.Files }
 
 var _ ports.Brick = filesystemBrick{}
@@ -76,7 +78,7 @@ func makeFilesystemBrick(path string) (filesystemBrick, error) {
 	if err != nil {
 		return b, err
 	}
-
+	b.BasePath = filepath.Join(path, "")
 	err = filepath.Walk(path,
 		func(p string, info os.FileInfo, err error) error {
 			if err != nil {

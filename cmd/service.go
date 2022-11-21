@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -11,11 +12,27 @@ var serviceCmd = &cobra.Command{
 	Short: "Manage C++ microservices",
 }
 
+type MapBasedParameterResolver struct {
+	parameters map[string]string
+}
+
+func (r MapBasedParameterResolver) Resolve(key string) string {
+	return r.parameters[key]
+}
+
 var addServiceCmd = &cobra.Command{
-	Use:   "add [template]",
+	Use:   "add [folder]",
 	Short: "Adds a new C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := serviceApi.Add("test-service", "0.0.1", "base/hexagonal-skeleton", "./test"); err != nil {
+		if len(args) < 1 {
+			fmt.Println("service folder argument is missing")
+			return
+		}
+
+		path, name := filepath.Split(args[0])
+
+		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
+		if err := serviceApi.Add("base-hexagonal-skeleton", path, r); err != nil {
 			fmt.Println(err)
 		}
 	},
