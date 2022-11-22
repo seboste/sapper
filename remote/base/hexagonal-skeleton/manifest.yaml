@@ -1,5 +1,6 @@
 ---
 id : base-hexagonal-skeleton
+version : 1.0.0
 kind: template
 description : template of a hexagonal microservice
 parameters : 
