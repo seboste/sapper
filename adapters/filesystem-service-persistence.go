@@ -12,7 +12,20 @@ type FileSystemServicePersistence struct {
 }
 
 func (fsp FileSystemServicePersistence) Load(path string) (ports.Service, error) {
-	return ports.Service{}, nil
+	s := ports.Service{Path: path}
+
+	sapperFilePath := filepath.Join(s.Path, "sapperfile.yaml")
+
+	yamlData, err := ioutil.ReadFile(sapperFilePath)
+	if err != nil {
+		return s, nil
+	}
+
+	if err := yaml.Unmarshal(yamlData, &s); err != nil {
+		return s, nil
+	}
+
+	return s, nil
 }
 
 func (fsp FileSystemServicePersistence) Save(s ports.Service) error {

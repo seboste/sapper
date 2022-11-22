@@ -20,7 +20,7 @@ var addBrickCmd = &cobra.Command{
 	Use:   "add [template]",
 	Short: "Adds another building brick to the C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		brickApi.Add()
+		//brickApi.Add()
 	},
 }
 

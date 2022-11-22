@@ -32,7 +32,7 @@ var addServiceCmd = &cobra.Command{
 		path, name := filepath.Split(args[0])
 
 		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
-		if err := serviceApi.Add("base-hexagonal-skeleton", path, r); err != nil {
+		if err := serviceApi.Add("base-hexagonal-http", path, r); err != nil {
 			fmt.Println(err)
 		}
 	},
