@@ -1,0 +1,20 @@
+//<<<SAPPER SECTION BEGIN APPEND MAIN-INCLUDES>>>
+#include <adapters/http-handler/http-handler.h>
+//<<<SAPPER SECTION END APPEND MAIN-INCLUDES>>>
+
+int main()
+{
+    ...
+
+//<<<SAPPER SECTION BEGIN APPEND MAIN-ADAPTER-INSTANTIATION>>>
+    HttpHandler handler(core);
+//<<<SAPPER SECTION END APPEND MAIN-ADAPTER-INSTANTIATION>>>
+
+    ...
+
+//<<<SAPPER SECTION BEGIN REPLACE MAIN-HANDLE>>>
+    handler.Handle();
+//<<<SAPPER SECTION END REPLACE MAIN-HANDLE>>>
+
+    return 0;
+}
