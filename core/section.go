@@ -22,7 +22,7 @@ type tag struct {
 }
 
 func readTag(line string) *tag {
-	tagExp := regexp.MustCompile(`<<<SAPPER\s*SECTION\s*(BEGIN|END)(\s*(APPEND|REPLACE))?\s*(.*?)>>>`)
+	tagExp := regexp.MustCompile(`<<<SAPPER\s*SECTION\s*(BEGIN|END)(\s*(APPEND|REPLACE|PREPEND))?\s*(.*?)>>>`)
 
 	matches := tagExp.FindStringSubmatch(line)
 	if len(matches) != 5 {
@@ -36,6 +36,14 @@ func readTag(line string) *tag {
 	}
 
 	return &t
+}
+
+func toMap(sections []section) map[string]section {
+	sectionMap := map[string]section{}
+	for _, s := range sections {
+		sectionMap[s.name] = s
+	}
+	return sectionMap
 }
 
 func readSections(data string) ([]section, error) {
@@ -68,7 +76,11 @@ func readSections(data string) ([]section, error) {
 			}
 		} else {
 			if currentSection != nil {
-				currentSection.content = currentSection.content + fmt.Sprintln(line)
+				if currentSection.content == "" {
+					currentSection.content = line
+				} else {
+					currentSection.content = fmt.Sprintln(currentSection.content) + line
+				}
 			}
 		}
 		lineCount = lineCount + 1

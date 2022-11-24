@@ -1,6 +1,8 @@
 package core
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -63,21 +65,129 @@ func AddBrick(s *ports.Service, b ports.Brick, parameters map[string]string) err
 		if err != nil {
 			return err
 		}
+		contentStr := string(content)
 
-		for name, value := range parameters {
-			pattern := "<<<" + name + ">>>"
-			content = []byte(strings.ReplaceAll(string(content), pattern, value))
-		}
+		contentStr = replaceParameters(contentStr, parameters)
 
-		err = ioutil.WriteFile(outputFilePath, content, 0644)
-		if err != nil {
-			return err
+		if _, err := os.Stat(outputFilePath); errors.Is(err, os.ErrNotExist) { //file does not exit => just write out the content
+			err = ioutil.WriteFile(outputFilePath, []byte(contentStr), 0644)
+			if err != nil {
+				return err
+			}
+		} else { //file exists => merge Sections
+			inputSectionSlice, err := readSections(contentStr)
+			if err != nil {
+				return err
+			}
+			inputSections := toMap(inputSectionSlice)
+
+			outputContent, err := ioutil.ReadFile(outputFilePath)
+			if err != nil {
+				return err
+			}
+
+			outputContentStr := string(outputContent)
+
+			mergedOutputContentStr, err := mergeSections(outputContentStr, inputSections)
+
+			err = ioutil.WriteFile(outputFilePath, []byte(mergedOutputContentStr), 0644)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	s.BrickIds = append(s.BrickIds, ports.BrickDependency{b.GetId(), b.GetVersion()})
 
 	return nil
+}
+
+func mergeSection(base section, incoming section) (string, error) {
+
+	if base.name != incoming.name {
+		return "", fmt.Errorf("Unable to merge section %s with section %s. Names must match.", base.name, incoming.name)
+	}
+
+	if base.verb != "" {
+		return "", fmt.Errorf("Unable to merge section %s. Base operation must not be defined.", base.name)
+	}
+
+	if incoming.verb == "REPLACE" {
+		return incoming.content, nil
+	} else if incoming.verb == "PREPEND" {
+		var content string
+		content = content + incoming.content
+		if base.content != "" && incoming.content != "" {
+			content = content + fmt.Sprintln("")
+		}
+		content = content + base.content
+		return content, nil
+	} else if incoming.verb == "APPEND" {
+		var content string
+		content = content + base.content
+		if base.content != "" && incoming.content != "" {
+			content = content + fmt.Sprintln("")
+		}
+		content = content + incoming.content
+		return content, nil
+	} else {
+		return "", fmt.Errorf("Unable to merge section %s. Invalid incoming operation %s.", base.name, incoming.verb)
+	}
+}
+
+func mergeSections(content string, inputSections map[string]section) (string, error) {
+	outputSections, err := readSections(content)
+	if err != nil {
+		return content, err
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(content))
+
+	outputContent := ""
+	lineNumber := 0
+	for _, s := range outputSections {
+		//advance to next section
+		for lineNumber < s.lineBegin && scanner.Scan() {
+			outputContent = outputContent + fmt.Sprintln(scanner.Text())
+			lineNumber = lineNumber + 1
+		}
+
+		if incomingSection, ok := inputSections[s.name]; ok {
+			mergedSectionContent, err := mergeSection(s, incomingSection)
+			if err != nil {
+				return "", err
+			}
+			if mergedSectionContent != "" {
+				outputContent = outputContent + fmt.Sprintln(mergedSectionContent)
+			}
+		} else { // no incoming section => just use base content
+			outputContent = outputContent + s.content
+		}
+		for lineNumber < s.lineEnd && scanner.Scan() { //skip section content
+			lineNumber = lineNumber + 1
+		}
+
+		//take care of end tag
+		scanner.Scan()
+		outputContent = outputContent + fmt.Sprintln(scanner.Text())
+		lineNumber = lineNumber + 1
+	}
+
+	//copy incoming content after last section
+	for scanner.Scan() {
+		outputContent = outputContent + fmt.Sprintln(scanner.Text())
+		lineNumber = lineNumber + 1
+	}
+
+	return outputContent, nil
+}
+
+func replaceParameters(content string, parameters map[string]string) string {
+	for name, value := range parameters {
+		pattern := "<<<" + name + ">>>"
+		content = strings.ReplaceAll(content, pattern, value)
+	}
+	return content
 }
 
 func GetBricksRecursive(brickId string, db ports.BrickDB) ([]ports.Brick, error) {

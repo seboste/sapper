@@ -29,8 +29,7 @@ func Test_readSections(t *testing.T) {
 				lineEnd:   6,
 				content: `3content1
 4content2
-5content3
-`,
+5content3`,
 			},
 			},
 			wantErr: false,
@@ -53,8 +52,7 @@ func Test_readSections(t *testing.T) {
 				lineEnd:   6,
 				content: `3content1
 4content2
-5content3
-`,
+5content3`,
 			}, {
 				name:      "BLA",
 				verb:      "",
