@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
@@ -39,6 +40,10 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 	}
 
 	bricks = removeBricks(bricks, service.BrickIds) //remove all bricks that are already there
+
+	if len(bricks) == 0 {
+		return fmt.Errorf("brick %s has already been added.", brickId)
+	}
 
 	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
 	if err != nil {
