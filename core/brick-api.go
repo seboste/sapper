@@ -30,7 +30,7 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 
 	bricks, err := GetBricksRecursive(brickId, b.Db)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	service, err := b.ServicePersistence.Load(servicePath)
