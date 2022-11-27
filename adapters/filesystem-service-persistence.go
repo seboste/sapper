@@ -18,11 +18,11 @@ func (fsp FileSystemServicePersistence) Load(path string) (ports.Service, error)
 
 	yamlData, err := ioutil.ReadFile(sapperFilePath)
 	if err != nil {
-		return s, nil
+		return s, err
 	}
 
 	if err := yaml.Unmarshal(yamlData, &s); err != nil {
-		return s, nil
+		return s, err
 	}
 
 	return s, nil
