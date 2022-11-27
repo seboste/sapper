@@ -11,6 +11,21 @@ type BrickApi struct {
 	ServicePersistence ports.ServicePersistence
 }
 
+func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency) []ports.Brick {
+	brickIdsToRemoveMap := make(map[string]bool)
+	for _, b := range brickIdsToRemove {
+		brickIdsToRemoveMap[b.Id] = true
+	}
+
+	filteredBricks := []ports.Brick{}
+	for _, b := range bricks {
+		if brickIdsToRemoveMap[b.GetId()] == false {
+			filteredBricks = append(filteredBricks, b)
+		}
+	}
+	return filteredBricks
+}
+
 func (b BrickApi) Add(servicePath string, brickId string, parameterResolver ports.ParameterResolver) error {
 
 	bricks, err := GetBricksRecursive(brickId, b.Db)
@@ -18,14 +33,16 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 		return nil
 	}
 
-	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
+	service, err := b.ServicePersistence.Load(servicePath)
 	if err != nil {
 		return err
 	}
 
-	service, err := b.ServicePersistence.Load(servicePath)
+	bricks = removeBricks(bricks, service.BrickIds) //remove all bricks that are already there
+
+	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	for _, brick := range bricks {
