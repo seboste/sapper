@@ -30,9 +30,10 @@ var addServiceCmd = &cobra.Command{
 		}
 
 		path, name := filepath.Split(args[0])
+		template, _ := cmd.Flags().GetString("template")
 
 		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
-		if err := serviceApi.Add("base-hexagonal-http", path, r); err != nil {
+		if err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
 	},
@@ -83,6 +84,8 @@ func init() {
 	serviceCmd.AddCommand(deployServiceCmd)
 
 	rootCmd.AddCommand(serviceCmd)
+
+	addServiceCmd.PersistentFlags().String("template", "base-hexagonal-skeleton", "The id of a service template.")
 
 	// Here you will define your flags and configuration settings.
 
