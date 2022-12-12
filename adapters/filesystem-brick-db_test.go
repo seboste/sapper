@@ -11,52 +11,6 @@ import (
 	"github.com/seboste/sapper/ports"
 )
 
-func TestParseString(t *testing.T) {
-	type args struct {
-		str string
-	}
-	tests := []struct {
-		name  string
-		args  args
-		want  ports.BrickKind
-		want1 bool
-	}{
-		{name: "template", args: args{str: "template"}, want: ports.BrickKind(ports.Template), want1: true},
-		{name: "extension", args: args{str: "extension"}, want: ports.BrickKind(ports.Extension), want1: true},
-		{name: "template CaMeLcAsE", args: args{str: "TeMplAtE"}, want: ports.BrickKind(ports.Template), want1: true},
-		{name: "unknown", args: args{str: "bla"}, want: ports.BrickKind(0), want1: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := ports.ParseBrickKind(tt.args.str)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseString() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("ParseString() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
-func TestBrickKind_String(t *testing.T) {
-	tests := []struct {
-		name string
-		bk   ports.BrickKind
-		want string
-	}{
-		{name: "template", bk: ports.BrickKind(ports.Template), want: "template"},
-		{name: "extension", bk: ports.BrickKind(ports.Extension), want: "extension"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.bk.String(); got != tt.want {
-				t.Errorf("BrickKind.String() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_makeFilesystemBrick(t *testing.T) {
 	tempDir, _ := ioutil.TempDir("", "example")
 	defer os.RemoveAll(tempDir) // clean up
