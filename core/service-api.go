@@ -37,7 +37,7 @@ func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (
 func ResolveParameterSlice(bricks []ports.Brick, pr ports.ParameterResolver) (map[string]string, error) {
 	combinedParameters := map[string]string{}
 	for _, brick := range bricks {
-		p, err := ResolveParameters(brick.GetParameters(), pr)
+		p, err := ResolveParameters(brick.Parameters, pr)
 		if err != nil {
 			return map[string]string{}, err
 		}
@@ -49,8 +49,8 @@ func ResolveParameterSlice(bricks []ports.Brick, pr ports.ParameterResolver) (ma
 }
 
 func AddBrick(s *ports.Service, b ports.Brick, parameters map[string]string) error {
-	for _, f := range b.GetFiles() {
-		inputFilePath := filepath.Join(b.GetBasePath(), f)
+	for _, f := range b.Files {
+		inputFilePath := filepath.Join(b.BasePath, f)
 		if _, err := os.Stat(inputFilePath); err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func AddBrick(s *ports.Service, b ports.Brick, parameters map[string]string) err
 		}
 	}
 
-	s.BrickIds = append(s.BrickIds, ports.BrickDependency{b.GetId(), b.GetVersion()})
+	s.BrickIds = append(s.BrickIds, ports.BrickDependency{b.Id, b.Version})
 
 	return nil
 }
@@ -194,23 +194,23 @@ func GetBricksRecursive(brickId string, db ports.BrickDB) ([]ports.Brick, error)
 	bricks := []ports.Brick{}
 	brickIds := make(map[string]bool)
 
-	brick := db.Brick(brickId)
-	if brick == nil {
+	brick, err := db.Brick(brickId)
+	if err != nil {
 		return bricks, fmt.Errorf("invalid brick %s", brickId)
 	}
 
 	bricks = append(bricks, brick)
-	brickIds[brick.GetId()] = true
-	for _, dependencyId := range brick.GetDependencies() {
+	brickIds[brick.Id] = true
+	for _, dependencyId := range brick.Dependencies {
 		dependencies, err := GetBricksRecursive(dependencyId, db)
 		if err != nil {
 			return nil, err
 		}
 		for _, dedependency := range dependencies {
 
-			if brickIds[dedependency.GetId()] == false {
+			if brickIds[dedependency.Id] == false {
 				bricks = append(bricks, dedependency)
-				brickIds[dedependency.GetId()] = true
+				brickIds[dedependency.Id] = true
 			}
 		}
 	}
@@ -230,10 +230,10 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 		return err
 	}
 
-	template := bricks[0]
-	if template == nil {
+	if len(bricks) == 0 {
 		return fmt.Errorf("invalid template %s", templateName)
 	}
+
 	serviceName := parameters["NAME"]
 	if serviceName == "" {
 		return fmt.Errorf("invalid service name %s", serviceName)

@@ -18,17 +18,17 @@ func TestParseString(t *testing.T) {
 	tests := []struct {
 		name  string
 		args  args
-		want  BrickKind
+		want  ports.BrickKind
 		want1 bool
 	}{
-		{name: "template", args: args{str: "template"}, want: BrickKind(ports.Template), want1: true},
-		{name: "extension", args: args{str: "extension"}, want: BrickKind(ports.Extension), want1: true},
-		{name: "template CaMeLcAsE", args: args{str: "TeMplAtE"}, want: BrickKind(ports.Template), want1: true},
-		{name: "unknown", args: args{str: "bla"}, want: BrickKind(0), want1: false},
+		{name: "template", args: args{str: "template"}, want: ports.BrickKind(ports.Template), want1: true},
+		{name: "extension", args: args{str: "extension"}, want: ports.BrickKind(ports.Extension), want1: true},
+		{name: "template CaMeLcAsE", args: args{str: "TeMplAtE"}, want: ports.BrickKind(ports.Template), want1: true},
+		{name: "unknown", args: args{str: "bla"}, want: ports.BrickKind(0), want1: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := ParseString(tt.args.str)
+			got, got1 := ports.ParseBrickKind(tt.args.str)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ParseString() got = %v, want %v", got, tt.want)
 			}
@@ -42,11 +42,11 @@ func TestParseString(t *testing.T) {
 func TestBrickKind_String(t *testing.T) {
 	tests := []struct {
 		name string
-		bk   BrickKind
+		bk   ports.BrickKind
 		want string
 	}{
-		{name: "template", bk: BrickKind(ports.Template), want: "template"},
-		{name: "extension", bk: BrickKind(ports.Extension), want: "extension"},
+		{name: "template", bk: ports.BrickKind(ports.Template), want: "template"},
+		{name: "extension", bk: ports.BrickKind(ports.Extension), want: "extension"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -65,7 +65,7 @@ func Test_makeFilesystemBrick(t *testing.T) {
 		name    string
 		yaml    string
 		files   []string
-		want    filesystemBrick
+		want    ports.Brick
 		wantErr bool
 	}{
 		{name: "basic brick",
@@ -81,11 +81,11 @@ dependencies :
  - dep1
  - dep2`,
 			files: []string{"a", "b/c"},
-			want: filesystemBrick{
+			want: ports.Brick{
 				Id:           "test",
 				Description:  "My test brick",
 				Version:      "1.0.0",
-				Kind:         BrickKind(ports.Extension),
+				Kind:         ports.Extension,
 				Parameters:   []ports.BrickParameters{{Name: "param1", Default: "default"}, {Name: "param2", Default: ""}},
 				Dependencies: []string{"dep1", "dep2"},
 				BasePath:     filepath.Join(tempDir, "test"),
@@ -117,7 +117,7 @@ dependencies :
 			}
 
 			//2. execute test
-			got, err := makeFilesystemBrick(brickDir)
+			got, err := makeBrick(brickDir)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeFilesystemBrick() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -130,8 +130,8 @@ dependencies :
 }
 
 func TestFilesystemBrickDB_Bricks(t *testing.T) {
-	brickTemp := filesystemBrick{Id: "test1_templ", Description: "desc", Kind: BrickKind(ports.Template)}
-	brickExt := filesystemBrick{Id: "test2_ext", Description: "desc", Kind: BrickKind(ports.Extension)}
+	brickTemp := ports.Brick{Id: "test1_templ", Description: "desc", Kind: ports.BrickKind(ports.Template)}
+	brickExt := ports.Brick{Id: "test2_ext", Description: "desc", Kind: ports.BrickKind(ports.Extension)}
 
 	type fields struct {
 		bricks []ports.Brick
@@ -169,8 +169,8 @@ func TestFilesystemBrickDB_Bricks(t *testing.T) {
 }
 
 func TestFilesystemBrickDB_Brick(t *testing.T) {
-	someBrick := filesystemBrick{Id: "some_id"}
-	someOtherBrick := filesystemBrick{Id: "some_other_id"}
+	someBrick := ports.Brick{Id: "some_id"}
+	someOtherBrick := ports.Brick{Id: "some_other_id"}
 	type fields struct {
 		bricks []ports.Brick
 	}
@@ -178,20 +178,23 @@ func TestFilesystemBrickDB_Brick(t *testing.T) {
 		id string
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   ports.Brick
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+		want    ports.Brick
 	}{
 		{name: "brick available",
-			fields: fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
-			args:   args{id: "some_id"},
-			want:   someBrick,
+			fields:  fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
+			args:    args{id: "some_id"},
+			wantErr: false,
+			want:    someBrick,
 		},
 		{name: "brick not available",
-			fields: fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
-			args:   args{id: "some_unknown_id"},
-			want:   nil,
+			fields:  fields{bricks: []ports.Brick{someBrick, someOtherBrick}},
+			args:    args{id: "some_unknown_id"},
+			wantErr: true,
+			want:    ports.Brick{},
 		},
 	}
 	for _, tt := range tests {
@@ -199,7 +202,13 @@ func TestFilesystemBrickDB_Brick(t *testing.T) {
 			db := &FilesystemBrickDB{
 				bricks: tt.fields.bricks,
 			}
-			if got := db.Brick(tt.args.id); !reflect.DeepEqual(got, tt.want) {
+
+			got, err := db.Brick(tt.args.id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FilesystemBrickDB.Brick() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FilesystemBrickDB.Brick() = %v, want %v", got, tt.want)
 			}
 		})
@@ -211,7 +220,7 @@ func TestFilesystemBrickDB_Init(t *testing.T) {
 	tempDir, _ := ioutil.TempDir("", "example_db")
 	defer os.RemoveAll(tempDir) // clean up
 
-	initiallyAvailableBrick := filesystemBrick{Id: "initial", Kind: BrickKind(ports.Extension)}
+	initiallyAvailableBrick := ports.Brick{Id: "initial", Kind: ports.Extension}
 
 	type fields struct {
 		bricks []ports.Brick
@@ -247,8 +256,8 @@ description : test brick 2
 			wantErr: false,
 			want: []ports.Brick{
 				initiallyAvailableBrick,
-				filesystemBrick{Id: "brick_1", Description: "test brick 1", Kind: BrickKind(ports.Extension), BasePath: filepath.Join(tempDir, "example_db/brick_1")},
-				filesystemBrick{Id: "brick_2", Description: "test brick 2", Kind: BrickKind(ports.Extension), BasePath: filepath.Join(tempDir, "example_db/brick_2")},
+				{Id: "brick_1", Description: "test brick 1", Kind: ports.Extension, BasePath: filepath.Join(tempDir, "example_db/brick_1")},
+				{Id: "brick_2", Description: "test brick 2", Kind: ports.Extension, BasePath: filepath.Join(tempDir, "example_db/brick_2")},
 			},
 		},
 	}

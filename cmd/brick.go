@@ -8,7 +8,7 @@ import (
 )
 
 func Print(b ports.Brick) {
-	fmt.Println(b.GetId(), b.GetVersion(), b.GetDescription())
+	fmt.Println(b.Id, b.Version, b.Description)
 }
 
 var brickCmd = &cobra.Command{

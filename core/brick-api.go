@@ -20,7 +20,7 @@ func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency
 
 	filteredBricks := []ports.Brick{}
 	for _, b := range bricks {
-		if brickIdsToRemoveMap[b.GetId()] == false {
+		if brickIdsToRemoveMap[b.Id] == false {
 			filteredBricks = append(filteredBricks, b)
 		}
 	}
@@ -69,7 +69,7 @@ func (b BrickApi) List() []ports.Brick {
 func (b BrickApi) Search(term string) []ports.Brick {
 	filteredBricks := []ports.Brick{}
 	for _, brick := range b.Db.Bricks(ports.Extension) {
-		if strings.Contains(brick.GetId(), term) || strings.Contains(brick.GetDescription(), term) {
+		if strings.Contains(brick.Id, term) || strings.Contains(brick.Description, term) {
 			filteredBricks = append(filteredBricks, brick)
 		}
 	}
