@@ -51,7 +51,7 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 	}
 
 	for _, brick := range bricks {
-		if err := AddBrick(&service, brick, parameters); err != nil {
+		if err := AddSingleBrick(&service, brick, parameters); err != nil {
 			return err
 		}
 	}

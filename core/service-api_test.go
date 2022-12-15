@@ -1,7 +1,13 @@
 package core
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/seboste/sapper/ports"
 )
 
 func Test_replaceParameters(t *testing.T) {
@@ -126,6 +132,216 @@ b
 			}
 			if got != tt.want {
 				t.Errorf("mergeSections() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type testResolver struct{}
+
+func (tr testResolver) Resolve(name string) string {
+	if name == "a" {
+		return "1"
+	}
+	if name == "b" {
+		return "2"
+	}
+	return ""
+}
+
+func TestResolveParameters(t *testing.T) {
+	test_resolver := testResolver{}
+	type args struct {
+		bp []ports.BrickParameters
+		pr ports.ParameterResolver
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]string
+		wantErr bool
+	}{
+		{
+			name:    "custom and default",
+			args:    args{bp: []ports.BrickParameters{{Name: "a", Default: "d1"}, {Name: "c", Default: "d2"}}, pr: test_resolver},
+			want:    map[string]string{"a": "1", "c": "d2"},
+			wantErr: false,
+		},
+		{
+			name:    "no default available",
+			args:    args{bp: []ports.BrickParameters{{Name: "c"}}, pr: test_resolver},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveParameters(tt.args.bp, tt.args.pr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResolveParameters() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ResolveParameters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveParameterSlice(t *testing.T) {
+	test_resolver := testResolver{}
+	type args struct {
+		bricks []ports.Brick
+		pr     ports.ParameterResolver
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]string
+		wantErr bool
+	}{
+		{
+			name:    "simple slice",
+			args:    args{bricks: []ports.Brick{{Id: "1234", Parameters: []ports.BrickParameters{{Name: "a"}}}}, pr: test_resolver},
+			want:    map[string]string{"a": "1"},
+			wantErr: false,
+		},
+		{
+			name:    "simple slice",
+			args:    args{bricks: []ports.Brick{{Id: "1234", Parameters: []ports.BrickParameters{{Name: "c"}}}}, pr: test_resolver},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveParameterSlice(tt.args.bricks, tt.args.pr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ResolveParameterSlice() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ResolveParameterSlice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAddSingleBrick(t *testing.T) {
+
+	brick1TempDir, _ := ioutil.TempDir("", "brick1")
+	brick2TempDir, _ := ioutil.TempDir("", "brick2")
+	serviceTempDir, _ := ioutil.TempDir("", "service")
+	defer os.RemoveAll(brick1TempDir)  // clean up
+	defer os.RemoveAll(brick2TempDir)  // clean up
+	defer os.RemoveAll(serviceTempDir) // clean up
+
+	ioutil.WriteFile(filepath.Join(brick1TempDir, "test.txt"), []byte(`this is some file
+with some parameter 'bla' which has the value '<<<bla>>>'
+`), 0666)
+
+	ioutil.WriteFile(filepath.Join(serviceTempDir, "some_file_with_section.txt"), []byte(`this is some file
+which has a section
+<<<SAPPER SECTION BEGIN my_section>>>
+with some content
+<<<SAPPER SECTION END my_section>>>
+and that's it.
+`), 0666)
+
+	ioutil.WriteFile(filepath.Join(brick2TempDir, "some_file_with_section.txt"), []byte(`some irrelevant content before the section
+<<<SAPPER SECTION BEGIN APPEND my_section>>>
+and even more content
+<<<SAPPER SECTION END APPEND my_section>>>
+`), 0666)
+
+	type args struct {
+		s          *ports.Service
+		b          ports.Brick
+		parameters map[string]string
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantService ports.Service
+		wantFiles   map[string]string //filename -> content
+		wantErr     bool
+	}{
+		{
+			name: "dependency",
+			args: args{
+				s:          &ports.Service{Id: "my_service", Dependencies: []ports.ServiceDependency{}},
+				b:          ports.Brick{Id: "b1", Version: "1.0.0"},
+				parameters: map[string]string{},
+			},
+			wantService: ports.Service{
+				Id:           "my_service",
+				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
+				Dependencies: []ports.ServiceDependency{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "copy file",
+			args: args{
+				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.ServiceDependency{}},
+				b:          ports.Brick{Id: "b1", Version: "1.0.0", BasePath: brick1TempDir, Files: []string{"test.txt"}},
+				parameters: map[string]string{"bla": "the_bla_value"},
+			},
+			wantService: ports.Service{
+				Id:           "my_service",
+				Path:         serviceTempDir,
+				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
+				Dependencies: []ports.ServiceDependency{},
+			},
+			wantFiles: map[string]string{
+				"test.txt": `this is some file
+with some parameter 'bla' which has the value 'the_bla_value'
+`},
+			wantErr: false,
+		},
+		{
+			name: "merge sections",
+			args: args{
+				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.ServiceDependency{}},
+				b:          ports.Brick{Id: "b1", Version: "1.0.0", BasePath: brick2TempDir, Files: []string{"some_file_with_section.txt"}},
+				parameters: map[string]string{},
+			},
+			wantService: ports.Service{
+				Id:           "my_service",
+				Path:         serviceTempDir,
+				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
+				Dependencies: []ports.ServiceDependency{},
+			},
+			wantFiles: map[string]string{"some_file_with_section.txt": `this is some file
+which has a section
+<<<SAPPER SECTION BEGIN my_section>>>
+with some content
+and even more content
+<<<SAPPER SECTION END my_section>>>
+and that's it.
+`},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := AddSingleBrick(tt.args.s, tt.args.b, tt.args.parameters); (err != nil) != tt.wantErr {
+				t.Errorf("AddSingleBrick() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(*tt.args.s, tt.wantService) {
+				t.Errorf("AddSingleBrick() service = %v, wantService %v", *tt.args.s, tt.wantService)
+			}
+
+			for filename, wantContent := range tt.wantFiles {
+				content, err := ioutil.ReadFile(filepath.Join(serviceTempDir, filename))
+				if err != nil {
+					t.Errorf("Unable to read from %s", filename)
+				}
+				contentStr := string(content)
+				if contentStr != wantContent {
+					t.Errorf("AddSingleBrick() file %s = %s, wantFile %s", filename, contentStr, wantContent)
+				}
 			}
 		})
 	}

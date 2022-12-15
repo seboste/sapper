@@ -39,7 +39,7 @@ func ResolveParameterSlice(bricks []ports.Brick, pr ports.ParameterResolver) (ma
 	for _, brick := range bricks {
 		p, err := ResolveParameters(brick.Parameters, pr)
 		if err != nil {
-			return map[string]string{}, err
+			return nil, err
 		}
 		for k, v := range p {
 			combinedParameters[k] = v
@@ -48,7 +48,7 @@ func ResolveParameterSlice(bricks []ports.Brick, pr ports.ParameterResolver) (ma
 	return combinedParameters, nil
 }
 
-func AddBrick(s *ports.Service, b ports.Brick, parameters map[string]string) error {
+func AddSingleBrick(s *ports.Service, b ports.Brick, parameters map[string]string) error {
 	for _, f := range b.Files {
 		inputFilePath := filepath.Join(b.BasePath, f)
 		if _, err := os.Stat(inputFilePath); err != nil {
@@ -246,7 +246,7 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 	service := ports.Service{Id: serviceName, Path: outputBasePath}
 
 	for _, brick := range bricks {
-		if err := AddBrick(&service, brick, parameters); err != nil {
+		if err := AddSingleBrick(&service, brick, parameters); err != nil {
 			return err
 		}
 	}
