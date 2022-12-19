@@ -6,15 +6,15 @@ import (
 	"github.com/seboste/sapper/ports"
 )
 
-type Remote struct {
+type RemoteApi struct {
 }
 
-func (r Remote) Add() {
+func (r RemoteApi) Add() {
 	fmt.Println("add")
 }
 
-func (r Remote) List() {
+func (r RemoteApi) List() {
 	fmt.Println("list")
 }
 
-var _ ports.RemoteApi = Remote{}
+var _ ports.RemoteApi = RemoteApi{}

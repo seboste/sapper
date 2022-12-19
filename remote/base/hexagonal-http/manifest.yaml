@@ -1,5 +1,6 @@
 ---
 id : base-hexagonal-http
+version : 1.0.0
 kind: template
 description : simple http microservice
-dependencies : [ base-hexagonal, handler-httplib ]
+dependencies : [ base-hexagonal-skeleton, handler-httplib ]

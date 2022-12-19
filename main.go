@@ -9,12 +9,14 @@ import (
 )
 
 func main() {
-	brick_db := &adapters.FilesystemBrickDB{}
-	err := brick_db.Init("./remote")
+	brickDb := &adapters.FilesystemBrickDB{}
+	err := brickDb.Init("./remote")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	cmd.SetApis(core.Brick{Db: brick_db}, core.Service{Db: brick_db}, core.Remote{})
+	servicePersistence := adapters.FileSystemServicePersistence{}
+
+	cmd.SetApis(core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence}, core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence}, core.RemoteApi{})
 	cmd.Execute()
 }

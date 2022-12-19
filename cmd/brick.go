@@ -8,7 +8,7 @@ import (
 )
 
 func Print(b ports.Brick) {
-	fmt.Println(b.GetId(), b.GetVersion(), b.GetDescription())
+	fmt.Println(b.Id, b.Version, b.Description)
 }
 
 var brickCmd = &cobra.Command{
@@ -20,7 +20,18 @@ var addBrickCmd = &cobra.Command{
 	Use:   "add [template]",
 	Short: "Adds another building brick to the C++ microservice",
 	Run: func(cmd *cobra.Command, args []string) {
-		brickApi.Add()
+		if len(args) < 1 {
+			fmt.Println("brick id argument is missing")
+			return
+		}
+
+		brickId := args[0]
+		service, _ := cmd.Flags().GetString("service")
+		r := MapBasedParameterResolver{}
+		err := brickApi.Add(service, brickId, r)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
@@ -58,6 +69,8 @@ func init() {
 	brickCmd.AddCommand(searchBrickCmd)
 
 	rootCmd.AddCommand(brickCmd)
+
+	addBrickCmd.PersistentFlags().String("service", ".", "Path to the service that the brick shall be added to.")
 
 	// Here you will define your flags and configuration settings.
 

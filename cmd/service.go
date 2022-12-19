@@ -30,9 +30,10 @@ var addServiceCmd = &cobra.Command{
 		}
 
 		path, name := filepath.Split(args[0])
+		template, _ := cmd.Flags().GetString("template")
 
 		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
-		if err := serviceApi.Add("base-hexagonal-skeleton", path, r); err != nil {
+		if err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
 	},
@@ -50,7 +51,12 @@ var buildServiceCmd = &cobra.Command{
 	Use:   "build [template]",
 	Short: "Builds the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Build("./test/test-service")
+
+		if len(args) < 1 {
+			fmt.Println("service folder argument is missing")
+			return
+		}
+		serviceApi.Build(args[0])
 	},
 }
 
@@ -78,6 +84,8 @@ func init() {
 	serviceCmd.AddCommand(deployServiceCmd)
 
 	rootCmd.AddCommand(serviceCmd)
+
+	addServiceCmd.PersistentFlags().String("template", "base-hexagonal-skeleton", "The id of a service template.")
 
 	// Here you will define your flags and configuration settings.
 
