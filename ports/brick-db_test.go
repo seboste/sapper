@@ -3,6 +3,8 @@ package ports
 import (
 	"reflect"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseBrickKind(t *testing.T) {
@@ -46,6 +48,33 @@ func TestBrickKind_String(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.bk.String(); got != tt.want {
 				t.Errorf("BrickKind.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBrickKind_UnmarshalYAML(t *testing.T) {
+	type args struct {
+		value string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantBk  BrickKind
+		wantErr bool
+	}{
+		{name: "extension", args: args{value: "extension"}, wantBk: Extension, wantErr: false},
+		{name: "template", args: args{value: "template"}, wantBk: Template, wantErr: false},
+		{name: "invalid", args: args{value: "something_invalid"}, wantBk: Template, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var bk BrickKind
+			if err := yaml.Unmarshal([]byte(tt.args.value), &bk); (err != nil) != tt.wantErr {
+				t.Errorf("BrickKind.UnmarshalYAML() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if bk != tt.wantBk {
+				t.Errorf("BrickKind.UnmarshalYAML() brickKind = %v, wantErr %v", bk, tt.wantBk)
 			}
 		})
 	}
