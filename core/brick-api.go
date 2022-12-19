@@ -29,7 +29,7 @@ func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency
 
 func (b BrickApi) Add(servicePath string, brickId string, parameterResolver ports.ParameterResolver) error {
 
-	bricks, err := GetBricksRecursive(brickId, b.Db)
+	bricks, err := GetBricksRecursive(brickId, b.Db, map[string]bool{})
 	if err != nil {
 		return err
 	}

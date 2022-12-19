@@ -190,9 +190,18 @@ func replaceParameters(content string, parameters map[string]string) string {
 	return content
 }
 
-func GetBricksRecursive(brickId string, db ports.BrickDB) ([]ports.Brick, error) {
-	bricks := []ports.Brick{}
+func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[string]bool) ([]ports.Brick, error) {
+
 	brickIds := make(map[string]bool)
+	for k, v := range parentBrickIds {
+		brickIds[k] = v
+	}
+
+	bricks := []ports.Brick{}
+
+	if brickIds[brickId] == true {
+		return nil, fmt.Errorf("cyclic brick dependency")
+	}
 
 	brick, err := db.Brick(brickId)
 	if err != nil {
@@ -201,16 +210,23 @@ func GetBricksRecursive(brickId string, db ports.BrickDB) ([]ports.Brick, error)
 
 	bricks = append(bricks, brick)
 	brickIds[brick.Id] = true
+
+	//deep copy to identify cyclic dependencies
+	baselineBrickIds := make(map[string]bool)
+	for k, v := range brickIds {
+		baselineBrickIds[k] = v
+	}
+
 	for _, dependencyId := range brick.Dependencies {
-		dependencies, err := GetBricksRecursive(dependencyId, db)
+		dependencies, err := GetBricksRecursive(dependencyId, db, baselineBrickIds)
 		if err != nil {
 			return nil, err
 		}
-		for _, dedependency := range dependencies {
 
-			if brickIds[dedependency.Id] == false {
-				bricks = append(bricks, dedependency)
-				brickIds[dedependency.Id] = true
+		for _, dependency := range dependencies {
+			if brickIds[dependency.Id] == false {
+				bricks = append(bricks, dependency)
+				brickIds[dependency.Id] = true
 			}
 		}
 	}
@@ -220,7 +236,7 @@ func GetBricksRecursive(brickId string, db ports.BrickDB) ([]ports.Brick, error)
 
 func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
 
-	bricks, err := GetBricksRecursive(templateName, s.Db)
+	bricks, err := GetBricksRecursive(templateName, s.Db, map[string]bool{})
 	if err != nil {
 		return err
 	}

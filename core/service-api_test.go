@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -342,6 +343,84 @@ and that's it.
 				if contentStr != wantContent {
 					t.Errorf("AddSingleBrick() file %s = %s, wantFile %s", filename, contentStr, wantContent)
 				}
+			}
+		})
+	}
+}
+
+type TestBrickDB struct {
+}
+
+func (db TestBrickDB) Init(Path string) error {
+	return nil
+}
+
+func (db TestBrickDB) Bricks(kind ports.BrickKind) []ports.Brick {
+	return []ports.Brick{}
+}
+
+func (db TestBrickDB) Brick(id string) (ports.Brick, error) {
+	if id == "brick1" {
+		return ports.Brick{Id: "brick1", Dependencies: []string{"brick2", "brick3"}}, nil
+	}
+	if id == "brick2" {
+		return ports.Brick{Id: "brick2", Dependencies: []string{"brick4"}}, nil
+	}
+	if id == "brick3" {
+		return ports.Brick{Id: "brick3", Dependencies: []string{"brick4"}}, nil
+	}
+	if id == "brick4" {
+		return ports.Brick{Id: "brick4", Dependencies: []string{}}, nil
+	}
+	if id == "brick5" {
+		return ports.Brick{Id: "brick5", Dependencies: []string{"brick6"}}, nil
+	}
+	if id == "brick6" {
+		return ports.Brick{Id: "brick6", Dependencies: []string{"brick5"}}, nil
+	}
+	return ports.Brick{}, fmt.Errorf("brick with id %s does not exist", id)
+}
+
+func TestGetBricksRecursive(t *testing.T) {
+	testBrickDb := TestBrickDB{}
+	type args struct {
+		brickId string
+		db      ports.BrickDB
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []ports.Brick
+		wantErr bool
+	}{
+		{
+			name:    "no_dependencies",
+			args:    args{brickId: "brick4", db: testBrickDb},
+			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}},
+			wantErr: false,
+		},
+		{
+			name:    "diamond",
+			args:    args{brickId: "brick1", db: testBrickDb},
+			want:    []ports.Brick{{Id: "brick1", Dependencies: []string{"brick2", "brick3"}}, {Id: "brick2", Dependencies: []string{"brick4"}}, {Id: "brick4", Dependencies: []string{}}, {Id: "brick3", Dependencies: []string{"brick4"}}},
+			wantErr: false,
+		},
+		{
+			name:    "cycle",
+			args:    args{brickId: "brick5", db: testBrickDb},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetBricksRecursive(tt.args.brickId, tt.args.db, map[string]bool{})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetBricksRecursive() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetBricksRecursive() = %v, want %v", got, tt.want)
 			}
 		})
 	}
