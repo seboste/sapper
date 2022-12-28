@@ -4,20 +4,13 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/seboste/sapper/adapters"
 	"github.com/spf13/cobra"
 )
 
 var serviceCmd = &cobra.Command{
 	Use:   "service",
 	Short: "Manage C++ microservices",
-}
-
-type MapBasedParameterResolver struct {
-	parameters map[string]string
-}
-
-func (r MapBasedParameterResolver) Resolve(key string) string {
-	return r.parameters[key]
 }
 
 var addServiceCmd = &cobra.Command{
@@ -32,7 +25,12 @@ var addServiceCmd = &cobra.Command{
 		path, name := filepath.Split(args[0])
 		template, _ := cmd.Flags().GetString("template")
 
-		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
+		r, err := adapters.MakeSapperParameterResolver(cmd.Flags(), name)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		if err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
@@ -85,7 +83,8 @@ func init() {
 
 	rootCmd.AddCommand(serviceCmd)
 
-	addServiceCmd.PersistentFlags().String("template", "base-hexagonal-skeleton", "The id of a service template.")
+	addServiceCmd.PersistentFlags().StringP("template", "t", "base-hexagonal-skeleton", "The id of a service template.")
+	adapters.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
 
 	// Here you will define your flags and configuration settings.
 

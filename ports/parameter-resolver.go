@@ -1,5 +1,5 @@
 package ports
 
 type ParameterResolver interface {
-	Resolve(name string) string
+	Resolve(name string, defaultValue string) string
 }

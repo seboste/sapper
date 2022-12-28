@@ -22,10 +22,7 @@ type ServiceApi struct {
 func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (map[string]string, error) {
 	parameters := make(map[string]string)
 	for _, p := range bp {
-		value := pr.Resolve(p.Name)
-		if value == "" {
-			value = p.Default
-		}
+		value := pr.Resolve(p.Name, p.Default)
 		if value == "" {
 			return nil, fmt.Errorf("unable to resolve value for parameter %s", p.Name)
 		}

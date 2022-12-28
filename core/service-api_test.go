@@ -140,14 +140,14 @@ b
 
 type testResolver struct{}
 
-func (tr testResolver) Resolve(name string) string {
+func (tr testResolver) Resolve(name string, defaultValue string) string {
 	if name == "a" {
 		return "1"
 	}
 	if name == "b" {
 		return "2"
 	}
-	return ""
+	return defaultValue
 }
 
 func TestResolveParameters(t *testing.T) {
