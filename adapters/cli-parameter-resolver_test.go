@@ -10,7 +10,8 @@ func TestCommandLineInterfaceParameterResolver_Resolve(t *testing.T) {
 		parameters map[string]string
 	}
 	type args struct {
-		name string
+		name         string
+		defaultValue string
 	}
 	tests := []struct {
 		name   string
@@ -18,15 +19,17 @@ func TestCommandLineInterfaceParameterResolver_Resolve(t *testing.T) {
 		args   args
 		want   string
 	}{
-		{name: "existing param", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "param"}, want: "value"},
-		{name: "unknown param", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "unknown"}, want: ""},
+		{name: "existing param retruns value", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "param", defaultValue: ""}, want: "value"},
+		{name: "existing param with default returns value", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "param", defaultValue: "default"}, want: "value"},
+		{name: "unknown param returns emply", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "unknown", defaultValue: ""}, want: ""},
+		{name: "unknown param with default returns emply", fields: fields{parameters: map[string]string{"param": "value"}}, args: args{name: "unknown", defaultValue: "default"}, want: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clipr := CommandLineInterfaceParameterResolver{
 				parameters: tt.fields.parameters,
 			}
-			if got := clipr.Resolve(tt.args.name); got != tt.want {
+			if got := clipr.Resolve(tt.args.name, tt.args.defaultValue); got != tt.want {
 				t.Errorf("CommandLineInterfaceParameterResolver.Resolve() = %v, want %v", got, tt.want)
 			}
 		})

@@ -11,7 +11,6 @@ import (
 )
 
 type InteractiveParameterResolver struct {
-	DefaultResolver *ports.ParameterResolver
 }
 
 func resolve(rd io.Reader, wr io.Writer, name string, defaultValue string) string {
@@ -34,11 +33,7 @@ func resolve(rd io.Reader, wr io.Writer, name string, defaultValue string) strin
 	return value
 }
 
-func (ipr InteractiveParameterResolver) Resolve(name string) string {
-	defaultValue := ""
-	if ipr.DefaultResolver != nil {
-		defaultValue = (*ipr.DefaultResolver).Resolve(name)
-	}
+func (ipr InteractiveParameterResolver) Resolve(name string, defaultValue string) string {
 	return resolve(os.Stdin, os.Stdout, name, defaultValue)
 }
 

@@ -8,7 +8,8 @@ import (
 )
 
 type CommandLineInterfaceParameterResolver struct {
-	parameters map[string]string
+	BackupResolver ports.ParameterResolver
+	parameters     map[string]string
 }
 
 func MakeCommandLineInterfaceParameterResolver(parameters []string) (CommandLineInterfaceParameterResolver, error) {
@@ -27,7 +28,7 @@ func MakeCommandLineInterfaceParameterResolver(parameters []string) (CommandLine
 	return resolver, nil
 }
 
-func (clipr CommandLineInterfaceParameterResolver) Resolve(name string) string {
+func (clipr CommandLineInterfaceParameterResolver) Resolve(name string, defaultValue string) string {
 	return clipr.parameters[name]
 }
 
