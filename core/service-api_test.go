@@ -270,21 +270,21 @@ and even more content
 		{
 			name: "dependency",
 			args: args{
-				s:          &ports.Service{Id: "my_service", Dependencies: []ports.ServiceDependency{}},
+				s:          &ports.Service{Id: "my_service", Dependencies: []ports.PackageDependency{}},
 				b:          ports.Brick{Id: "b1", Version: "1.0.0"},
 				parameters: map[string]string{},
 			},
 			wantService: ports.Service{
 				Id:           "my_service",
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
-				Dependencies: []ports.ServiceDependency{},
+				Dependencies: []ports.PackageDependency{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "copy file",
 			args: args{
-				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.ServiceDependency{}},
+				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.PackageDependency{}},
 				b:          ports.Brick{Id: "b1", Version: "1.0.0", BasePath: brick1TempDir, Files: []string{"test.txt"}},
 				parameters: map[string]string{"bla": "the_bla_value"},
 			},
@@ -292,7 +292,7 @@ and even more content
 				Id:           "my_service",
 				Path:         serviceTempDir,
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
-				Dependencies: []ports.ServiceDependency{},
+				Dependencies: []ports.PackageDependency{},
 			},
 			wantFiles: map[string]string{
 				"test.txt": `this is some file
@@ -303,7 +303,7 @@ with some parameter 'bla' which has the value 'the_bla_value'
 		{
 			name: "merge sections",
 			args: args{
-				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.ServiceDependency{}},
+				s:          &ports.Service{Id: "my_service", Path: serviceTempDir, Dependencies: []ports.PackageDependency{}},
 				b:          ports.Brick{Id: "b1", Version: "1.0.0", BasePath: brick2TempDir, Files: []string{"some_file_with_section.txt"}},
 				parameters: map[string]string{},
 			},
@@ -311,7 +311,7 @@ with some parameter 'bla' which has the value 'the_bla_value'
 				Id:           "my_service",
 				Path:         serviceTempDir,
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
-				Dependencies: []ports.ServiceDependency{},
+				Dependencies: []ports.PackageDependency{},
 			},
 			wantFiles: map[string]string{"some_file_with_section.txt": `this is some file
 which has a section

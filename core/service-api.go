@@ -287,6 +287,31 @@ func (s ServiceApi) Test() {
 	fmt.Println("test")
 }
 
+func (s ServiceApi) Describe(path string) (string, error) {
+
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return "", err
+	}
+
+	description := ""
+
+	description = description + fmt.Sprintln("Id:", service.Id)
+	description = description + fmt.Sprintln("Path:", service.Path)
+	description = description + fmt.Sprintln("BrickIds:")
+	for _, brickId := range service.BrickIds {
+		description = description + fmt.Sprintln("  - Id:", brickId.Id)
+		description = description + fmt.Sprintln("    Version:", brickId.Version)
+	}
+	description = description + fmt.Sprintln("Dependencies:")
+	for _, dependency := range service.Dependencies {
+		description = description + fmt.Sprintln("  - Id:", dependency.Id)
+		description = description + fmt.Sprintln("    Version:", dependency.Version)
+	}
+
+	return description, nil
+}
+
 func (s ServiceApi) Deploy() {
 	fmt.Println("deploy")
 }

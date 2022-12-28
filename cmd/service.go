@@ -37,8 +37,27 @@ var addServiceCmd = &cobra.Command{
 	},
 }
 
+var describeServiceCmd = &cobra.Command{
+	Use:   "describe [service folder]",
+	Short: "Prints information about a service",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) < 1 {
+			fmt.Println("service folder argument is missing")
+			return
+		}
+		description, err := serviceApi.Describe(args[0])
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println(description)
+	},
+}
+
 var updateServiceCmd = &cobra.Command{
-	Use:   "update [template]",
+	Use:   "update [service folder]",
 	Short: "Updates the dependencies of the service",
 	Run: func(cmd *cobra.Command, args []string) {
 		serviceApi.Update()
@@ -46,7 +65,7 @@ var updateServiceCmd = &cobra.Command{
 }
 
 var buildServiceCmd = &cobra.Command{
-	Use:   "build [template]",
+	Use:   "build [service folder]",
 	Short: "Builds the service",
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -76,6 +95,7 @@ var deployServiceCmd = &cobra.Command{
 
 func init() {
 	serviceCmd.AddCommand(addServiceCmd)
+	serviceCmd.AddCommand(describeServiceCmd)
 	serviceCmd.AddCommand(updateServiceCmd)
 	serviceCmd.AddCommand(buildServiceCmd)
 	serviceCmd.AddCommand(testServiceCmd)
