@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/seboste/sapper/adapters"
 	"github.com/seboste/sapper/ports"
 	"github.com/spf13/cobra"
 )
@@ -27,10 +28,17 @@ var addBrickCmd = &cobra.Command{
 
 		brickId := args[0]
 		service, _ := cmd.Flags().GetString("service")
-		r := MapBasedParameterResolver{}
-		err := brickApi.Add(service, brickId, r)
+
+		r, err := adapters.MakeSapperParameterResolver(cmd.Flags(), "")
 		if err != nil {
 			fmt.Println(err)
+			return
+		}
+
+		err = brickApi.Add(service, brickId, r)
+		if err != nil {
+			fmt.Println(err)
+			return
 		}
 	},
 }
@@ -70,7 +78,8 @@ func init() {
 
 	rootCmd.AddCommand(brickCmd)
 
-	addBrickCmd.PersistentFlags().String("service", ".", "Path to the service that the brick shall be added to.")
+	addBrickCmd.PersistentFlags().StringP("service", "s", ".", "Path to the service that the brick shall be added to.")
+	adapters.RegisterSapperParameterResolver(addBrickCmd.PersistentFlags())
 
 	// Here you will define your flags and configuration settings.
 

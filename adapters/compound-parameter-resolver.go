@@ -21,3 +21,5 @@ func (cpr CompoundParameterResolver) Resolve(name string, defaultValue string) s
 	}
 	return ""
 }
+
+var _ ports.ParameterResolver = CompoundParameterResolver{}

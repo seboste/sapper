@@ -33,6 +33,8 @@ func resolve(rd io.Reader, wr io.Writer, name string, defaultValue string) strin
 	return value
 }
 
+var _ ports.ParameterResolver = InteractiveParameterResolver{}
+
 func (ipr InteractiveParameterResolver) Resolve(name string, defaultValue string) string {
 	return resolve(os.Stdin, os.Stdout, name, defaultValue)
 }
