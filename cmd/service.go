@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/seboste/sapper/adapters"
+	"github.com/seboste/sapper/ports"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +18,7 @@ type MapBasedParameterResolver struct {
 	parameters map[string]string
 }
 
-func (r MapBasedParameterResolver) Resolve(key string) string {
+func (r MapBasedParameterResolver) Resolve(key string, defaultValue string) string {
 	return r.parameters[key]
 }
 
@@ -29,12 +31,22 @@ var addServiceCmd = &cobra.Command{
 			return
 		}
 
-		path, name := filepath.Split(args[0])
+		path, _ := filepath.Split(args[0])
 		template, _ := cmd.Flags().GetString("template")
-		parameter, _ := cmd.Flags().GetStringArray("parameter")
-		fmt.Printf("%v", parameter)
 
-		r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
+		parameter, _ := cmd.Flags().GetStringArray("parameter")
+		clipr, err := adapters.MakeCommandLineInterfaceParameterResolver(parameter)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		ipr := adapters.InteractiveParameterResolver{}
+
+		r := adapters.MakeCompoundParameterResolver([]ports.ParameterResolver{clipr, ipr})
+		//r := MapBasedParameterResolver{parameters: map[string]string{"NAME": name}}
+		//ipr := adapters.InteractiveParameterResolver{}
+		//ipr.DefaultResolver = clipr
+
 		if err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
