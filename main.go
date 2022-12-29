@@ -15,7 +15,9 @@ func main() {
 		fmt.Println(err)
 	}
 
-	servicePersistence := adapters.FileSystemServicePersistence{}
+	dependencyManager := adapters.ConanDependencyManager{}
+
+	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
 
 	cmd.SetApis(core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence}, core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence}, core.RemoteApi{})
 	cmd.Execute()
