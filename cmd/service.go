@@ -56,11 +56,11 @@ var describeServiceCmd = &cobra.Command{
 	},
 }
 
-var updateServiceCmd = &cobra.Command{
-	Use:   "update [service folder]",
-	Short: "Updates the dependencies of the service",
+var upgradeServiceCmd = &cobra.Command{
+	Use:   "upgrade [service folder]",
+	Short: "upgrades the dependencies of the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Update()
+		serviceApi.Upgrade(args[0])
 	},
 }
 
@@ -96,7 +96,7 @@ var deployServiceCmd = &cobra.Command{
 func init() {
 	serviceCmd.AddCommand(addServiceCmd)
 	serviceCmd.AddCommand(describeServiceCmd)
-	serviceCmd.AddCommand(updateServiceCmd)
+	serviceCmd.AddCommand(upgradeServiceCmd)
 	serviceCmd.AddCommand(buildServiceCmd)
 	serviceCmd.AddCommand(testServiceCmd)
 	serviceCmd.AddCommand(deployServiceCmd)

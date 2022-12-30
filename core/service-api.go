@@ -271,8 +271,9 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 	return nil
 }
 
-func (s ServiceApi) Update() {
-	fmt.Println("update")
+func (s ServiceApi) Upgrade(path string) error {
+	fmt.Println("upgrade")
+	return nil
 }
 
 func (s ServiceApi) Build(path string) error {
