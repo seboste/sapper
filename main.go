@@ -19,6 +19,9 @@ func main() {
 
 	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
 
-	cmd.SetApis(core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence}, core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence}, core.RemoteApi{})
+	cmd.SetApis(
+		core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence},
+		core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence, DependencyInfo: dependencyManager}, core.RemoteApi{},
+	)
 	cmd.Execute()
 }

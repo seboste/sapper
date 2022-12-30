@@ -26,7 +26,10 @@ func (fsp FileSystemServicePersistence) Load(path string) (ports.Service, error)
 		return s, err
 	}
 
-	s.Dependencies = fsp.DependencyReader.Read(s)
+	s.Dependencies, err = fsp.DependencyReader.Read(s)
+	if err != nil {
+		return s, err
+	}
 
 	return s, nil
 }

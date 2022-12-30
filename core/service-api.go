@@ -17,6 +17,7 @@ type ServiceApi struct {
 	Db                 ports.BrickDB
 	ServicePersistence ports.ServicePersistence
 	ParameterResolver  ports.ParameterResolver
+	DependencyInfo     ports.DependencyInfo
 }
 
 func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (map[string]string, error) {
@@ -306,7 +307,12 @@ func (s ServiceApi) Describe(path string) (string, error) {
 	description = description + fmt.Sprintln("Dependencies:")
 	for _, dependency := range service.Dependencies {
 		description = description + fmt.Sprintln("  - Id:", dependency.Id)
-		description = description + fmt.Sprintln("    Version:", dependency.Version)
+		availableVersions, err := s.DependencyInfo.AvailableVersions(dependency.Id)
+		if err != nil || len(availableVersions) == 0 || availableVersions[len(availableVersions)-1] == dependency.Version {
+			description = description + fmt.Sprintln("    Version:", dependency.Version)
+		} else {
+			description = description + fmt.Sprintln("    Version:", dependency.Version, ", newer version", availableVersions[len(availableVersions)-1], "available")
+		}
 	}
 
 	return description, nil
