@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -289,34 +290,32 @@ func (s ServiceApi) Test() {
 	fmt.Println("test")
 }
 
-func (s ServiceApi) Describe(path string) (string, error) {
+func (s ServiceApi) Describe(path string, writer io.Writer) error {
 
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	description := ""
-
-	description = description + fmt.Sprintln("Id:", service.Id)
-	description = description + fmt.Sprintln("Path:", service.Path)
-	description = description + fmt.Sprintln("BrickIds:")
+	writer.Write([]byte(fmt.Sprintln("Id:", service.Id)))
+	writer.Write([]byte(fmt.Sprintln("Path:", service.Path)))
+	writer.Write([]byte(fmt.Sprintln("BrickIds:")))
 	for _, brickId := range service.BrickIds {
-		description = description + fmt.Sprintln("  - Id:", brickId.Id)
-		description = description + fmt.Sprintln("    Version:", brickId.Version)
+		writer.Write([]byte(fmt.Sprintln("  - Id:", brickId.Id)))
+		writer.Write([]byte(fmt.Sprintln("    Version:", brickId.Version)))
 	}
-	description = description + fmt.Sprintln("Dependencies:")
+	writer.Write([]byte(fmt.Sprintln("Dependencies:")))
 	for _, dependency := range service.Dependencies {
-		description = description + fmt.Sprintln("  - Id:", dependency.Id)
+		writer.Write([]byte(fmt.Sprintln("  - Id:", dependency.Id)))
 		availableVersions, err := s.DependencyInfo.AvailableVersions(dependency.Id)
 		if err != nil || len(availableVersions) == 0 || availableVersions[len(availableVersions)-1] == dependency.Version {
-			description = description + fmt.Sprintln("    Version:", dependency.Version)
+			writer.Write([]byte(fmt.Sprintln("    Version:", dependency.Version)))
 		} else {
-			description = description + fmt.Sprintln("    Version:", dependency.Version, ", newer version", availableVersions[len(availableVersions)-1], "available")
+			writer.Write([]byte(fmt.Sprintln("    Version:", dependency.Version, ", newer version", availableVersions[len(availableVersions)-1], "available")))
 		}
 	}
 
-	return description, nil
+	return nil
 }
 
 func (s ServiceApi) Deploy() {

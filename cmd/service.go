@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/seboste/sapper/adapters"
@@ -45,14 +46,12 @@ var describeServiceCmd = &cobra.Command{
 			fmt.Println("service folder argument is missing")
 			return
 		}
-		description, err := serviceApi.Describe(args[0])
+		err := serviceApi.Describe(args[0], os.Stdout)
 
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-
-		fmt.Println(description)
 	},
 }
 
