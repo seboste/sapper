@@ -141,7 +141,7 @@ func (cdm ConanDependencyManager) AvailableVersions(dependency string) ([]string
 	for scanner.Scan() {
 		line := scanner.Text()
 		dependencyMatch := dependencyExp.FindStringSubmatch(line)
-		if len(dependencyMatch) == 3 && dependencyMatch[1] == dependency {
+		if len(dependencyMatch) == 8 && dependencyMatch[1] == dependency {
 			versions = append(versions, dependencyMatch[2])
 		}
 	}
