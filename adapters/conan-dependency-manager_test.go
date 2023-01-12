@@ -91,6 +91,7 @@ func Test_parseConanDependency(t *testing.T) {
 	type args struct {
 		input string
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -114,6 +115,122 @@ func Test_parseConanDependency(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseConanDependency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConanDependencyManager_Write(t *testing.T) {
+	serviceDir, err := ioutil.TempDir("", "service")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer os.RemoveAll(serviceDir) // clean up
+	testService := ports.Service{Id: "test", Path: serviceDir}
+
+	type args struct {
+		s          ports.Service
+		dependency string
+		version    string
+	}
+	tests := []struct {
+		name          string
+		conanfile     string
+		cdm           ConanDependencyManager
+		args          args
+		wantConanfile string
+		wantErr       bool
+	}{
+		{name: "single dependency", cdm: ConanDependencyManager{}, conanfile: `
+[requires]
+mylib/1.2.3
+`, args: args{s: testService, dependency: "mylib", version: "1.2.4"}, wantErr: false, wantConanfile: `
+[requires]
+mylib/1.2.4
+`,
+		},
+		{name: "full blown dependency", cdm: ConanDependencyManager{}, conanfile: `
+[requires]
+lib1/0.1.2
+abc mylib/1.2.3@user/channel#01234ebc	xyz
+lib2/0.1.2
+`, args: args{s: testService, dependency: "mylib", version: "1.2.4"}, wantErr: false, wantConanfile: `
+[requires]
+lib1/0.1.2
+abc mylib/1.2.4@user/channel#01234ebc	xyz
+lib2/0.1.2
+`,
+		},
+		{name: "lib duplicate error", cdm: ConanDependencyManager{}, conanfile: `
+[requires]
+mylib/1.2.3
+mylib/1.2.2
+`, args: args{s: testService, dependency: "mylib", version: "1.2.4"}, wantErr: true, wantConanfile: `
+[requires]
+mylib/1.2.3
+mylib/1.2.2
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			//1. prepare test
+			cdm := ConanDependencyManager{}
+
+			conanfilePath := filepath.Join(serviceDir, "conanfile.txt")
+			os.Remove(conanfilePath)
+			if tt.conanfile != "" {
+				ioutil.WriteFile(conanfilePath, []byte(tt.conanfile), 0666)
+			}
+
+			//2. execute test
+			if err := cdm.Write(tt.args.s, tt.args.dependency, tt.args.version); (err != nil) != tt.wantErr {
+				t.Errorf("ConanDependencyManager.Write() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			content, err := ioutil.ReadFile(conanfilePath)
+			if err != nil {
+				t.Errorf("ConanDependencyManager.Write() error. Unable to read from conanfile")
+			}
+			if string(content) != tt.wantConanfile {
+				t.Errorf("ConanDependencyManager.Write() content = %v, wantContent %v", string(content), tt.wantConanfile)
+			}
+
+		})
+	}
+}
+
+func TestConanDependency_String(t *testing.T) {
+	type fields struct {
+		Id        string
+		Version   string
+		User      string
+		Channel   string
+		Reference string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{name: "Basic", fields: fields{Id: "lib", Version: "version"}, want: "lib/version"},
+		{name: "User and Channel", fields: fields{Id: "lib", Version: "version", User: "user", Channel: "channel"}, want: "lib/version@user/channel"},
+		{name: "Reference", fields: fields{Id: "lib", Version: "version", Reference: "123abc"}, want: "lib/version#123abc"},
+		{name: "Full Blown", fields: fields{Id: "lib", Version: "version", User: "user", Channel: "channel", Reference: "123abc"}, want: "lib/version@user/channel#123abc"},
+		{name: "Missing Channel", fields: fields{Id: "lib", Version: "version", User: "user"}, want: "lib/version@user/_"},
+		{name: "Missing User", fields: fields{Id: "lib", Version: "version", Channel: "channel"}, want: "lib/version@_/channel"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dep := ConanDependency{
+				Id:        tt.fields.Id,
+				Version:   tt.fields.Version,
+				User:      tt.fields.User,
+				Channel:   tt.fields.Channel,
+				Reference: tt.fields.Reference,
+			}
+			if got := dep.String(); got != tt.want {
+				t.Errorf("ConanDependency.String() = %v, want %v", got, tt.want)
 			}
 		})
 	}

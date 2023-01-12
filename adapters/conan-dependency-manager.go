@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/seboste/sapper/ports"
 )
@@ -24,6 +26,24 @@ type ConanDependency struct {
 	Reference string
 }
 
+func (dep ConanDependency) String() string {
+	var str string
+	str = str + fmt.Sprintf("%s/%s", dep.Id, dep.Version)
+	if dep.User != "" || dep.Channel != "" {
+		if dep.User == "" {
+			dep.User = "_"
+		}
+		if dep.Channel == "" {
+			dep.Channel = "_"
+		}
+		str = str + fmt.Sprintf("@%s/%s", dep.User, dep.Channel)
+	}
+	if dep.Reference != "" {
+		str = str + fmt.Sprintf("#%s", dep.Reference)
+	}
+	return str
+}
+
 var dependencyExp = regexp.MustCompile(`([^@\/#\s]+)\/([^@\/#\s]+)(@([^@\/#\s]+)\/([^@\/#\s]+))?(#([0-9a-fA-F]+))?`)
 
 func parseConanDependency(input string) (ConanDependency, error) {
@@ -35,9 +55,13 @@ func parseConanDependency(input string) (ConanDependency, error) {
 	return ConanDependency{Id: m[1], Version: m[2], User: m[4], Channel: m[5], Reference: m[7]}, nil
 }
 
+func replaceConanDependency(line string, dep ConanDependency) string {
+	return dependencyExp.ReplaceAllString(line, fmt.Sprint(dep))
+}
+
 var sectionExp = regexp.MustCompile(`\[(.*)\]`)
 
-func processRequiresSection(r io.Reader, op func(line string)) {
+func processLines(r io.Reader, op func(line string, section string)) {
 	scanner := bufio.NewScanner(r)
 	currentSection := ""
 	for scanner.Scan() {
@@ -47,10 +71,7 @@ func processRequiresSection(r io.Reader, op func(line string)) {
 		if len(sectionMatch) == 2 {
 			currentSection = sectionMatch[1]
 		}
-
-		if currentSection == "requires" {
-			op(line)
-		}
+		op(line, currentSection)
 	}
 }
 
@@ -63,10 +84,12 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 		return []ports.PackageDependency{}, err
 	}
 
-	processRequiresSection(f, func(line string) {
-		dep, err := parseConanDependency(line)
-		if err == nil {
-			dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
+	processLines(f, func(line string, section string) {
+		if section == "requires" {
+			dep, err := parseConanDependency(line)
+			if err == nil {
+				dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
+			}
 		}
 	})
 
@@ -74,6 +97,34 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 }
 
 func (cdm ConanDependencyManager) Write(s ports.Service, dependency string, version string) error {
+
+	conanfilePath := filepath.Join(s.Path, "conanfile.txt")
+	content, err := ioutil.ReadFile(conanfilePath)
+	if err != nil {
+		return err
+	}
+
+	var outputContent string
+	replaceCount := 0
+	processLines(strings.NewReader(string(content)), func(line string, section string) {
+		if section == "requires" {
+			dep, err := parseConanDependency(line)
+			if err == nil && dep.Id == dependency {
+				dep.Version = version
+				line = replaceConanDependency(line, dep)
+				replaceCount = replaceCount + 1
+			}
+		}
+
+		outputContent = outputContent + fmt.Sprintln(line)
+	})
+	if replaceCount != 1 {
+		return fmt.Errorf("unable to set version %s of package %s", version, dependency)
+	}
+	if err := ioutil.WriteFile(conanfilePath, []byte(outputContent), 0644); err != nil {
+		return err
+	}
+
 	return nil
 }
 
