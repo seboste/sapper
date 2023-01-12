@@ -14,12 +14,11 @@ import (
 type ConanDependencyManager struct {
 }
 
-var dependencyExp = regexp.MustCompile(`\s*(.*)/(.*)\s*`)
+var dependencyExp = regexp.MustCompile(`([^@\/#\s]+)\/([^@\/#\s]+)(@([^@\/#\s]+)\/([^@\/#\s]+))?(#[0-9a-fA-F]+)?`)
+var sectionExp = regexp.MustCompile(`\[(.*)\]`)
 
 func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependency, error) {
 	dependencies := []ports.PackageDependency{}
-
-	sectionExp := regexp.MustCompile(`\[(.*)\]`)
 
 	conanFilePath := filepath.Join(s.Path, "conanfile.txt")
 	f, err := os.Open(conanFilePath)
@@ -39,7 +38,7 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 
 		if currentSection == "requires" {
 			dependencyMatch := dependencyExp.FindStringSubmatch(line)
-			if len(dependencyMatch) == 3 {
+			if len(dependencyMatch) >= 3 {
 				dependency := ports.PackageDependency{Id: dependencyMatch[1], Version: dependencyMatch[2]}
 				dependencies = append(dependencies, dependency)
 			}
