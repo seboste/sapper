@@ -21,7 +21,7 @@ func main() {
 
 	cmd.SetApis(
 		core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence},
-		core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence, DependencyInfo: dependencyManager}, core.RemoteApi{},
+		core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence, DependencyInfo: dependencyManager, DependencyWriter: dependencyManager}, core.RemoteApi{},
 	)
 	cmd.Execute()
 }

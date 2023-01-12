@@ -49,7 +49,7 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 	return dependencies, nil
 }
 
-func (cdm ConanDependencyManager) Write(s ports.Service) error {
+func (cdm ConanDependencyManager) Write(s ports.Service, dependency string, version string) error {
 	return nil
 }
 

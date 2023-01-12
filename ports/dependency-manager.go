@@ -10,7 +10,7 @@ type DependencyReader interface {
 }
 
 type DependencyWriter interface {
-	Write(s Service) error
+	Write(s Service, dependency string, version string) error
 }
 
 type DependencyInfo interface {

@@ -19,6 +19,7 @@ type ServiceApi struct {
 	ServicePersistence ports.ServicePersistence
 	ParameterResolver  ports.ParameterResolver
 	DependencyInfo     ports.DependencyInfo
+	DependencyWriter   ports.DependencyWriter
 }
 
 func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (map[string]string, error) {
@@ -273,15 +274,48 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 }
 
 func (s ServiceApi) Upgrade(path string) error {
-	fmt.Println("upgrade")
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
+
+	err = s.Build(path)
+	if err != nil {
+		return err
+	}
+
+	for _, d := range service.Dependencies {
+		availableVersions, err := s.DependencyInfo.AvailableVersions(d.Id)
+		if err != nil {
+			return err
+		}
+		if len(availableVersions) > 0 {
+			latest := availableVersions[len(availableVersions)-1]
+			if latest != d.Version {
+				err = s.DependencyWriter.Write(service, d.Id, latest)
+				if err != nil {
+					return err
+				}
+
+				err = s.Build(path)
+				if err != nil {
+					fmt.Printf("Failed to build with latest version %s of %s", latest, d.Id)
+					s.DependencyWriter.Write(service, d.Id, d.Version) //roll back
+				}
+			}
+		}
+
+		fmt.Println(d.Id)
+	}
+
 	return nil
 }
 
 func (s ServiceApi) Build(path string) error {
 	cmd := exec.Command("make", "build", "-B")
 	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = nil //os.Stdout
+	cmd.Stderr = nil //os.Stderr
 	err := cmd.Run()
 	return err
 }

@@ -59,7 +59,11 @@ var upgradeServiceCmd = &cobra.Command{
 	Use:   "upgrade [service folder]",
 	Short: "upgrades the dependencies of the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Upgrade(args[0])
+		err := serviceApi.Upgrade(args[0])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	},
 }
 
