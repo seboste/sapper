@@ -94,3 +94,34 @@ my_lib/1.2.3@user/channel#6af9cc7cb931c5ad94
 		})
 	}
 }
+
+func Test_parseConanDependency(t *testing.T) {
+	type args struct {
+		input string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    ConanDependency
+		wantErr bool
+	}{
+		{name: "lib, version only", args: args{input: "lib/version"}, want: ConanDependency{Id: "lib", Version: "version"}, wantErr: false},
+		{name: "with user and channel", args: args{input: "lib/version@user/channel"}, want: ConanDependency{Id: "lib", Version: "version", User: "user", Channel: "channel"}, wantErr: false},
+		{name: "with reference", args: args{input: "lib/version#abcdef0123456789"}, want: ConanDependency{Id: "lib", Version: "version", Reference: "abcdef0123456789"}, wantErr: false},
+		{name: "full blown", args: args{input: "lib/version@user/channel#abcdef0123456789"}, want: ConanDependency{Id: "lib", Version: "version", User: "user", Channel: "channel", Reference: "abcdef0123456789"}, wantErr: false},
+		{name: "invalid syntax", args: args{input: "lib_without_version"}, want: ConanDependency{}, wantErr: true},
+		{name: "invalid reference", args: args{input: "lib/version#invalid_reference"}, want: ConanDependency{Id: "lib", Version: "version"}, wantErr: false}, //TODO: error instead of empty reference?
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseConanDependency(tt.args.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseConanDependency() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseConanDependency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

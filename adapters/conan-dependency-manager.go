@@ -3,6 +3,7 @@ package adapters
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +15,25 @@ import (
 type ConanDependencyManager struct {
 }
 
-var dependencyExp = regexp.MustCompile(`([^@\/#\s]+)\/([^@\/#\s]+)(@([^@\/#\s]+)\/([^@\/#\s]+))?(#[0-9a-fA-F]+)?`)
+type ConanDependency struct {
+	Id        string
+	Version   string
+	User      string
+	Channel   string
+	Reference string
+}
+
+var dependencyExp = regexp.MustCompile(`([^@\/#\s]+)\/([^@\/#\s]+)(@([^@\/#\s]+)\/([^@\/#\s]+))?(#([0-9a-fA-F]+))?`)
+
+func parseConanDependency(input string) (ConanDependency, error) {
+	m := dependencyExp.FindStringSubmatch(input)
+	if len(m) != 8 {
+		return ConanDependency{}, fmt.Errorf("unable to parse %s. It needs to be in the format 'lib/version@user/channel#reference'. 'lib' and 'version' are required.", input)
+	}
+
+	return ConanDependency{Id: m[1], Version: m[2], User: m[4], Channel: m[5], Reference: m[7]}, nil
+}
+
 var sectionExp = regexp.MustCompile(`\[(.*)\]`)
 
 func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependency, error) {
