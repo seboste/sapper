@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,16 +37,8 @@ func parseConanDependency(input string) (ConanDependency, error) {
 
 var sectionExp = regexp.MustCompile(`\[(.*)\]`)
 
-func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependency, error) {
-	dependencies := []ports.PackageDependency{}
-
-	conanFilePath := filepath.Join(s.Path, "conanfile.txt")
-	f, err := os.Open(conanFilePath)
-	if err != nil {
-		return []ports.PackageDependency{}, err
-	}
-
-	scanner := bufio.NewScanner(f)
+func processRequiresSection(r io.Reader, op func(line string)) {
+	scanner := bufio.NewScanner(r)
 	currentSection := ""
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -56,12 +49,26 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 		}
 
 		if currentSection == "requires" {
-			dep, err := parseConanDependency(line)
-			if err == nil {
-				dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
-			}
+			op(line)
 		}
 	}
+}
+
+func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependency, error) {
+	dependencies := []ports.PackageDependency{}
+
+	conanFilePath := filepath.Join(s.Path, "conanfile.txt")
+	f, err := os.Open(conanFilePath)
+	if err != nil {
+		return []ports.PackageDependency{}, err
+	}
+
+	processRequiresSection(f, func(line string) {
+		dep, err := parseConanDependency(line)
+		if err == nil {
+			dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
+		}
+	})
 
 	return dependencies, nil
 }
