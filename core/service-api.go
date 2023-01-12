@@ -279,6 +279,7 @@ func (s ServiceApi) Upgrade(path string) error {
 		return err
 	}
 
+	fmt.Println("building service...")
 	err = s.Build(path)
 	if err != nil {
 		return err
@@ -292,6 +293,7 @@ func (s ServiceApi) Upgrade(path string) error {
 		if len(availableVersions) > 0 {
 			latest := availableVersions[len(availableVersions)-1]
 			if latest != d.Version {
+				fmt.Printf("New version %s found for %s => try to upgrade from %s to %s\n", latest, d.Id, d.Version, latest)
 				err = s.DependencyWriter.Write(service, d.Id, latest)
 				if err != nil {
 					return err
@@ -299,13 +301,16 @@ func (s ServiceApi) Upgrade(path string) error {
 
 				err = s.Build(path)
 				if err != nil {
-					fmt.Printf("Failed to build with latest version %s of %s", latest, d.Id)
+					fmt.Printf("Upgrade from %s to %s failed to build => rollback to %s\n", latest, d.Id, d.Version)
 					s.DependencyWriter.Write(service, d.Id, d.Version) //roll back
+				} else {
+					fmt.Printf("Upgrade from %s to %s succeeded\n", d.Version, latest)
 				}
+
+			} else {
+				fmt.Printf("%s is already up to date (%s)\n", d.Id, d.Version)
 			}
 		}
-
-		fmt.Println(d.Id)
 	}
 
 	return nil
