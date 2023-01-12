@@ -56,10 +56,9 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 		}
 
 		if currentSection == "requires" {
-			dependencyMatch := dependencyExp.FindStringSubmatch(line)
-			if len(dependencyMatch) >= 3 {
-				dependency := ports.PackageDependency{Id: dependencyMatch[1], Version: dependencyMatch[2]}
-				dependencies = append(dependencies, dependency)
+			dep, err := parseConanDependency(line)
+			if err == nil {
+				dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
 			}
 		}
 	}

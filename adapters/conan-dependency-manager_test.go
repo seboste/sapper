@@ -61,15 +61,6 @@ invalid2/ 0.0.1
 dep3/2.3.4
 invalid3
 	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "my_lib", Version: "1.2.3"}, {Id: "dep1", Version: "bla"}, {Id: "dep2", Version: "1.2.3b"}, {Id: "dep3", Version: "2.3.4"}}, wantErr: false},
-		{name: "user, channel", conanfile: `[requires]
-my_lib/1.2.3@user/channel
-	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "my_lib", Version: "1.2.3"}}, wantErr: false},
-		{name: "terminating @", conanfile: `[requires]
-my_lib/1.2.3@
-	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "my_lib", Version: "1.2.3"}}, wantErr: false},
-		{name: "reference", conanfile: `[requires]
-my_lib/1.2.3@user/channel#6af9cc7cb931c5ad94
-	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "my_lib", Version: "1.2.3"}}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -83,6 +74,7 @@ my_lib/1.2.3@user/channel#6af9cc7cb931c5ad94
 				ioutil.WriteFile(conanfilePath, []byte(tt.conanfile), 0666)
 			}
 
+			//2. execute test
 			got, err := cdm.Read(tt.args.s)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ConanDependencyManager.Read() error = %v, wantErr %v", err, tt.wantErr)
@@ -106,6 +98,7 @@ func Test_parseConanDependency(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "lib, version only", args: args{input: "lib/version"}, want: ConanDependency{Id: "lib", Version: "version"}, wantErr: false},
+		{name: "terminating @", args: args{input: "lib/version@"}, want: ConanDependency{Id: "lib", Version: "version"}, wantErr: false},
 		{name: "with user and channel", args: args{input: "lib/version@user/channel"}, want: ConanDependency{Id: "lib", Version: "version", User: "user", Channel: "channel"}, wantErr: false},
 		{name: "with reference", args: args{input: "lib/version#abcdef0123456789"}, want: ConanDependency{Id: "lib", Version: "version", Reference: "abcdef0123456789"}, wantErr: false},
 		{name: "full blown", args: args{input: "lib/version@user/channel#abcdef0123456789"}, want: ConanDependency{Id: "lib", Version: "version", User: "user", Channel: "channel", Reference: "abcdef0123456789"}, wantErr: false},
