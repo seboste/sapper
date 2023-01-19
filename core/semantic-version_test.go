@@ -72,6 +72,42 @@ func SemVer(s string) SemanticVersion {
 	v, _ := ParseSemanticVersion(s)
 	return v
 }
+
+func Test_ConvertToSemVer(t *testing.T) {
+	type args struct {
+		versions []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []SemanticVersion
+		wantErr bool
+	}{
+		{name: "multiple entries",
+			args:    args{versions: []string{"1.2.3", "1.2.4", "0.1.1"}},
+			want:    []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4"), SemVer("0.1.1")},
+			wantErr: false,
+		},
+		{name: "invalid entry",
+			args:    args{versions: []string{"1.2.3", "1.invalid.4", "0.1.1"}},
+			want:    []SemanticVersion{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ConvertToSemVer(tt.args.versions)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("convertToSemVer() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("convertToSemVer() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestByVersion_Less(t *testing.T) {
 	testData := []SemanticVersion{
 		SemVer("1.1.1"),
