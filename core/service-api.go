@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
@@ -273,6 +274,112 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 	return nil
 }
 
+func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) error {
+	err := s.DependencyWriter.Write(service, d.Id, targetVersion)
+	if err != nil {
+		return err
+	}
+	err = s.Build(service.Path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency) (string, error) {
+	availableVersionStrings, err := s.DependencyInfo.AvailableVersions(d.Id)
+	if err != nil {
+		return "", err
+	}
+	if len(availableVersionStrings) == 0 {
+		return "", fmt.Errorf("unable to find any versions of %s", d.Id)
+	}
+
+	latest := availableVersionStrings[len(availableVersionStrings)-1]
+	if d.Version == latest {
+		fmt.Printf("%s is already up to date (%s)\n", d.Id, d.Version)
+		return d.Version, nil
+	}
+
+	availableSemvers := []SemanticVersion{}
+	currentSemver, err := ParseSemanticVersion(d.Version)
+	if err == nil {
+		availableSemvers, err = ConvertToSemVer(availableVersionStrings)
+	}
+	newVersion := ""
+	if err == nil {
+		//use semantic versions
+		sort.Sort(ByVersion(availableSemvers))
+		higherAvailableSemvers := []SemanticVersion{}
+		for _, v := range availableSemvers {
+			if Less(currentSemver, v) {
+				higherAvailableSemvers = append(higherAvailableSemvers, v)
+			}
+		}
+
+		if len(higherAvailableSemvers) == 0 {
+			return d.Version, fmt.Errorf("unable to find any versions of %s higher than current version %v", d.Id, currentSemver)
+		}
+
+		i := len(higherAvailableSemvers) - 1 // start with highest version
+		highestSemver := higherAvailableSemvers[i]
+		fmt.Printf("Latest semantic version found for %s is %v\n", d.Id, highestSemver)
+
+		var highestSuccessSemver *SemanticVersion = nil
+		hasTried := false
+
+		for len(higherAvailableSemvers) > 1 || (len(higherAvailableSemvers) == 1 && hasTried == false) {
+			fmt.Printf("Trying to upgrade to %v\n", higherAvailableSemvers[i])
+			err = s.upgradeDependencyToVersion(service, d, higherAvailableSemvers[i].String())
+			if err == nil {
+				//this works => exclude all that are lower than current version
+				currentSemver := higherAvailableSemvers[i]
+				highestSuccessSemver = &currentSemver
+				higherAvailableSemvers = higherAvailableSemvers[i:]
+			} else {
+				fmt.Println(err.Error())
+				//this version does not work => exclude all that are higher or equal to the current version
+				higherAvailableSemvers = higherAvailableSemvers[:i]
+			}
+			i = len(higherAvailableSemvers) / 2
+			hasTried = true
+		}
+
+		if highestSuccessSemver != nil {
+			newVersion = highestSuccessSemver.String()
+			err = s.DependencyWriter.Write(service, d.Id, highestSuccessSemver.String())
+			if err != nil {
+				return "", err
+			}
+			if highestSemver == *highestSuccessSemver {
+				fmt.Printf("Upgrade from %v to %v succeeded\n", currentSemver, highestSemver)
+			} else {
+				fmt.Printf("Upgrade from %v to %v failed => upgrade to highest working version %v instead\n", currentSemver, highestSemver, *highestSuccessSemver)
+			}
+		} else {
+			newVersion = currentSemver.String()
+			err = s.DependencyWriter.Write(service, d.Id, currentSemver.String())
+			if err != nil {
+				return "", err
+			}
+			fmt.Printf("Upgrade from %v to %v failed => rolling back to previous version %v instead\n", currentSemver, highestSemver, currentSemver)
+		}
+	} else {
+		fmt.Printf("%s => simply trying to upgrade to the latest version %s\n", err.Error(), latest)
+		err := s.upgradeDependencyToVersion(service, d, latest)
+		if err != nil {
+			fmt.Printf("Upgrade from %s to %s failed to build => rollback to %s\n", latest, d.Id, d.Version)
+			s.DependencyWriter.Write(service, d.Id, d.Version) //roll back
+			return d.Version, err
+		}
+		fmt.Printf("Upgrade from %s to %s succeeded\n", d.Version, latest)
+		newVersion = latest
+	}
+
+	return newVersion, nil
+}
+
 func (s ServiceApi) Upgrade(path string) error {
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
@@ -285,32 +392,20 @@ func (s ServiceApi) Upgrade(path string) error {
 		return err
 	}
 
+	hasError := false
 	for _, d := range service.Dependencies {
-		availableVersions, err := s.DependencyInfo.AvailableVersions(d.Id)
+		fmt.Printf("upgrading %s (current version %s)\n", d.Id, d.Version)
+		_, err := s.upgradeDependency(service, d)
 		if err != nil {
-			return err
+			fmt.Println(err.Error())
+			hasError = true
+		} else {
+			//fmt.Printf("version of %s has been set from %s to %s\n", d.Id, d.Version, version)
 		}
-		if len(availableVersions) > 0 {
-			latest := availableVersions[len(availableVersions)-1]
-			if latest != d.Version {
-				fmt.Printf("New version %s found for %s => try to upgrade from %s to %s\n", latest, d.Id, d.Version, latest)
-				err = s.DependencyWriter.Write(service, d.Id, latest)
-				if err != nil {
-					return err
-				}
+	}
 
-				err = s.Build(path)
-				if err != nil {
-					fmt.Printf("Upgrade from %s to %s failed to build => rollback to %s\n", latest, d.Id, d.Version)
-					s.DependencyWriter.Write(service, d.Id, d.Version) //roll back
-				} else {
-					fmt.Printf("Upgrade from %s to %s succeeded\n", d.Version, latest)
-				}
-
-			} else {
-				fmt.Printf("%s is already up to date (%s)\n", d.Id, d.Version)
-			}
-		}
+	if hasError == true {
+		return fmt.Errorf("Unable to upgrade all dependencies")
 	}
 
 	return nil
