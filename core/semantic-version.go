@@ -48,14 +48,20 @@ func ParseSemanticVersion(s string) (SemanticVersion, error) {
 	}, nil
 }
 
-type ByVersion []SemanticVersion
+func ConvertToSemVer(versions []string) ([]SemanticVersion, error) {
+	semanticVersions := []SemanticVersion{}
+	for _, s := range versions {
+		v, err := ParseSemanticVersion(s)
+		if err != nil {
+			return []SemanticVersion{}, err
+		}
+		semanticVersions = append(semanticVersions, v)
+	}
+	return semanticVersions, nil
+}
 
-func (v ByVersion) Len() int      { return len(v) }
-func (v ByVersion) Swap(i, j int) { v[i], v[j] = v[j], v[i] }
-func (v ByVersion) Less(i, j int) bool {
-	a := v[i]
-	b := v[j]
-	//check in the order 'major', 'minor', 'patch', 'suffix'. Don't care about the prefix
+func Less(a, b SemanticVersion) bool {
+	// check in the order 'major', 'minor', 'patch', 'suffix'. Don't care about the prefix
 	if a.Major < b.Major {
 		return true
 	} else if a.Major == b.Major {
@@ -72,4 +78,12 @@ func (v ByVersion) Less(i, j int) bool {
 		}
 	}
 	return false
+}
+
+type ByVersion []SemanticVersion
+
+func (v ByVersion) Len() int      { return len(v) }
+func (v ByVersion) Swap(i, j int) { v[i], v[j] = v[j], v[i] }
+func (v ByVersion) Less(i, j int) bool {
+	return Less(v[i], v[j])
 }
