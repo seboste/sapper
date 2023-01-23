@@ -73,6 +73,14 @@ func SemVer(s string) SemanticVersion {
 	return v
 }
 
+func SemVerPtr(s string) *SemanticVersion {
+	v, err := ParseSemanticVersion(s)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+
 func Test_ConvertToSemVer(t *testing.T) {
 	type args struct {
 		versions []string

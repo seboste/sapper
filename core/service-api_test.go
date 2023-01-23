@@ -425,3 +425,56 @@ func TestGetBricksRecursive(t *testing.T) {
 		})
 	}
 }
+
+func Test_findLatestWorkingVersion(t *testing.T) {
+
+	type args struct {
+		versions  []SemanticVersion
+		isWorking map[SemanticVersion]bool
+	}
+	tests := []struct {
+		name                      string
+		args                      args
+		wantHighestVersion        *SemanticVersion
+		wantHighestWorkingVersion *SemanticVersion
+	}{
+		{name: "empty versions", args: args{versions: []SemanticVersion{}}, wantHighestVersion: nil, wantHighestWorkingVersion: nil},
+		{name: "single not working version", args: args{versions: []SemanticVersion{SemVer("1.2.3")}}, wantHighestVersion: SemVerPtr("1.2.3"), wantHighestWorkingVersion: nil},
+		{name: "single working version", args: args{versions: []SemanticVersion{SemVer("1.2.3")}, isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true}}, wantHighestVersion: SemVerPtr("1.2.3"), wantHighestWorkingVersion: SemVerPtr("1.2.3")},
+		{name: "two working versions", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): true}},
+			wantHighestVersion: SemVerPtr("1.2.4"), wantHighestWorkingVersion: SemVerPtr("1.2.4")},
+		{name: "two versions: higher version working", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): false, SemVer("1.2.4"): true}},
+			wantHighestVersion: SemVerPtr("1.2.4"), wantHighestWorkingVersion: SemVerPtr("1.2.4")},
+		{name: "two versions: lower version working", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): false}},
+			wantHighestVersion: SemVerPtr("1.2.4"), wantHighestWorkingVersion: SemVerPtr("1.2.3")},
+		{name: "three versions: center version working", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4"), SemVer("1.2.5")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): true, SemVer("1.2.5"): false}},
+			wantHighestVersion: SemVerPtr("1.2.5"), wantHighestWorkingVersion: SemVerPtr("1.2.4")},
+		{name: "five versions: 2nd version working", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4"), SemVer("1.2.5"), SemVer("1.2.6"), SemVer("1.2.7")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): true, SemVer("1.2.5"): false, SemVer("1.2.6"): false, SemVer("1.2.7"): false}},
+			wantHighestVersion: SemVerPtr("1.2.7"), wantHighestWorkingVersion: SemVerPtr("1.2.4")},
+		{name: "five versions: 4th version working", args: args{versions: []SemanticVersion{SemVer("1.2.3"), SemVer("1.2.4"), SemVer("1.2.5"), SemVer("1.2.6"), SemVer("1.2.7")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): true, SemVer("1.2.5"): true, SemVer("1.2.6"): true, SemVer("1.2.7"): false}},
+			wantHighestVersion: SemVerPtr("1.2.7"), wantHighestWorkingVersion: SemVerPtr("1.2.6")},
+		{name: "five versions: 4th version working, unsorted", args: args{versions: []SemanticVersion{SemVer("1.2.4"), SemVer("1.2.6"), SemVer("1.2.3"), SemVer("1.2.7"), SemVer("1.2.5")},
+			isWorking: map[SemanticVersion]bool{SemVer("1.2.3"): true, SemVer("1.2.4"): true, SemVer("1.2.5"): true, SemVer("1.2.6"): true, SemVer("1.2.7"): false}},
+			wantHighestVersion: SemVerPtr("1.2.7"), wantHighestWorkingVersion: SemVerPtr("1.2.6")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotHighestVersion, gotHighestWorkingVersion := findLatestWorkingVersion(tt.args.versions, func(v SemanticVersion) bool {
+				val, ok := tt.args.isWorking[v]
+				return ok == true && val == true
+			})
+			if !reflect.DeepEqual(gotHighestVersion, tt.wantHighestVersion) {
+				t.Errorf("findLatestWorkingVersion() gotHighestVersion = %v, wantHighestVersion %v", gotHighestVersion, tt.wantHighestVersion)
+			}
+			if !reflect.DeepEqual(gotHighestWorkingVersion, tt.wantHighestWorkingVersion) {
+				t.Errorf("findLatestWorkingVersion() gotHighestWorkingVersion = %v, wantHighestWorkingVersion %v", gotHighestWorkingVersion, tt.wantHighestWorkingVersion)
+			}
+		})
+	}
+}
