@@ -1,25 +1,26 @@
 package utils
 
 import (
+	"fmt"
 	"io"
-	"unicode/utf8"
+	"os"
 )
+
+const escape = "\x1b"
 
 type SingleLineWriter struct {
 	writer              io.Writer
 	hasEndedWithNewline *bool
-	noOfRunesWritten    *int
 }
 
 func MakeSingleLineWriter(w io.Writer) SingleLineWriter {
+	fmt.Fprintf(w, "%s[s", escape) //save terminal position
 	newFalse := false
-	newZeroInt := 0
-	return SingleLineWriter{writer: w, hasEndedWithNewline: &newFalse, noOfRunesWritten: &newZeroInt}
+	return SingleLineWriter{writer: w, hasEndedWithNewline: &newFalse}
 }
 
 func (slw SingleLineWriter) Write(p []byte) (int, error) {
 	requiredByteCount := len(p)
-	err := error(nil)
 	cleanupRequired := *slw.hasEndedWithNewline
 
 	//remove tailing new lines
@@ -39,30 +40,17 @@ func (slw SingleLineWriter) Write(p []byte) (int, error) {
 	}
 
 	if cleanupRequired {
-		_, err = slw.Cleanup()
-		if err != nil {
-			return 0, err
-		}
+		slw.Cleanup()
 	}
 
-	_, err = slw.writer.Write(p)
-	if err != nil {
-		return 0, err
-	}
-
-	*slw.noOfRunesWritten = *slw.noOfRunesWritten + utf8.RuneCountInString(string(p))
+	_, err := slw.writer.Write(p)
 	return requiredByteCount, err
 }
 
-func (slw SingleLineWriter) Cleanup() (int, error) {
-	p := make([]byte, *slw.noOfRunesWritten+1)
-	for i := range p {
-		p[i] = '\b'
-	}
-	p[len(p)-1] = '\r' //make sure to return to the beginning of the line
+func (slw SingleLineWriter) Cleanup() {
+	fmt.Fprintf(os.Stdout, "%s[u", escape) //return to saved position
+	fmt.Fprintf(os.Stdout, "%s[J", escape) //erase everything that has been written
 	*slw.hasEndedWithNewline = false
-	*slw.noOfRunesWritten = 0
-	return slw.writer.Write(p)
 }
 
 var _ io.Writer = SingleLineWriter{}
