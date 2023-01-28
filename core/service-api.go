@@ -318,7 +318,17 @@ func findLatestWorkingVersion(versions []SemanticVersion, isWorking func(v Seman
 	return &highestVersion, highestWorkingVersion
 }
 
-func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency) (string, error) {
+func filterSemvers(in []SemanticVersion, predicate func(SemanticVersion) bool) []SemanticVersion {
+	out := []SemanticVersion{}
+	for _, v := range in {
+		if predicate(v) {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency, keepMajorVersion bool) (string, error) {
 	availableVersionStrings, err := s.DependencyInfo.AvailableVersions(d.Id)
 	if err != nil {
 		return "", err
@@ -333,26 +343,25 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 		return d.Version, nil
 	}
 
-	availableSemvers := []SemanticVersion{}
+	semvers := []SemanticVersion{}
 	currentSemver, err := ParseSemanticVersion(d.Version)
 	if err == nil {
-		availableSemvers, err = ConvertToSemVer(availableVersionStrings)
+		semvers, err = ConvertToSemVer(availableVersionStrings)
 	}
 	newVersion := ""
 	if err == nil {
 		//use semantic versions
-		higherAvailableSemvers := []SemanticVersion{}
-		for _, v := range availableSemvers {
-			if Less(currentSemver, v) {
-				higherAvailableSemvers = append(higherAvailableSemvers, v)
-			}
+
+		semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return Less(currentSemver, v) })
+		if keepMajorVersion {
+			semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return currentSemver.Major == v.Major })
 		}
 
-		if len(higherAvailableSemvers) == 0 {
+		if len(semvers) == 0 {
 			return d.Version, fmt.Errorf("unable to find any versions of %s higher than current version %v", d.Id, currentSemver)
 		}
 
-		highestSemver, highestSuccessSemver := findLatestWorkingVersion(higherAvailableSemvers, func(v SemanticVersion) bool {
+		highestSemver, highestSuccessSemver := findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
 			fmt.Printf("Trying to upgrade to %v\n", v)
 			err := s.upgradeDependencyToVersion(service, d, v.String())
 			return err == nil
@@ -392,7 +401,7 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 	return newVersion, nil
 }
 
-func (s ServiceApi) Upgrade(path string) error {
+func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
 		return err
@@ -407,7 +416,7 @@ func (s ServiceApi) Upgrade(path string) error {
 	hasError := false
 	for _, d := range service.Dependencies {
 		fmt.Printf("upgrading %s (current version %s)\n", d.Id, d.Version)
-		_, err := s.upgradeDependency(service, d)
+		_, err := s.upgradeDependency(service, d, keepMajorVersion)
 		if err != nil {
 			fmt.Println(err.Error())
 			hasError = true

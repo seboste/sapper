@@ -14,6 +14,8 @@ var serviceCmd = &cobra.Command{
 	Short: "Manage C++ microservices",
 }
 
+var keepMajorVersion *bool
+
 var addServiceCmd = &cobra.Command{
 	Use:   "add [folder]",
 	Short: "Adds a new C++ microservice",
@@ -59,7 +61,8 @@ var upgradeServiceCmd = &cobra.Command{
 	Use:   "upgrade [service folder]",
 	Short: "upgrades the dependencies of the service",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := serviceApi.Upgrade(args[0])
+		cmd.PersistentFlags()
+		err := serviceApi.Upgrade(args[0], *keepMajorVersion)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -108,6 +111,8 @@ func init() {
 
 	addServiceCmd.PersistentFlags().StringP("template", "t", "base-hexagonal-skeleton", "The id of a service template.")
 	adapters.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
+
+	keepMajorVersion = upgradeServiceCmd.PersistentFlags().Bool("keep-major", false, "Upgrades are only conducted within the same major version of a dependency's semantic version")
 
 	// Here you will define your flags and configuration settings.
 
