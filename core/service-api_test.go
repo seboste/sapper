@@ -478,3 +478,31 @@ func Test_findLatestWorkingVersion(t *testing.T) {
 		})
 	}
 }
+
+func Test_filterSemvers(t *testing.T) {
+	type args struct {
+		in        []SemanticVersion
+		predicate func(SemanticVersion) bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want []SemanticVersion
+	}{
+		{
+			name: "two entries, keep major 1",
+			args: args{
+				in:        []SemanticVersion{SemVer("1.0.0"), SemVer("2.0.0")},
+				predicate: func(v SemanticVersion) bool { return v.Major == 1 },
+			},
+			want: []SemanticVersion{SemVer("1.0.0")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := filterSemvers(tt.args.in, tt.args.predicate); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("filterSemvers() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
