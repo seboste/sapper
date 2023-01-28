@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/seboste/sapper/ports"
+	"github.com/seboste/sapper/utils"
 )
 
 type ServiceApi struct {
@@ -425,9 +426,12 @@ func (s ServiceApi) Upgrade(path string) error {
 func (s ServiceApi) Build(path string) error {
 	cmd := exec.Command("make", "build", "-B")
 	cmd.Dir = path
-	cmd.Stdout = nil //os.Stdout
-	cmd.Stderr = nil //os.Stderr
+
+	slw := utils.MakeSingleLineWriter(os.Stdout)
+	cmd.Stdout = slw
+	cmd.Stderr = slw
 	err := cmd.Run()
+	slw.Cleanup()
 	return err
 }
 
