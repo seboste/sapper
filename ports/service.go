@@ -1,5 +1,7 @@
 package ports
 
+import "io"
+
 type BrickDependency struct {
 	Id      string
 	Version string
@@ -15,4 +17,8 @@ type Service struct {
 type ServicePersistence interface {
 	Load(path string) (Service, error)
 	Save(service Service) error
+}
+
+type ServiceBuilder interface {
+	Build(service Service, output io.Writer) error
 }

@@ -16,12 +16,19 @@ func main() {
 	}
 
 	dependencyManager := adapters.ConanDependencyManager{}
-
 	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
+	ServiceBuilder := adapters.CMakeService{}
 
 	cmd.SetApis(
 		core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence},
-		core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence, DependencyInfo: dependencyManager, DependencyWriter: dependencyManager}, core.RemoteApi{},
+		core.ServiceApi{
+			Db:                 brickDb,
+			ServicePersistence: servicePersistence,
+			ServiceBuilder:     ServiceBuilder,
+			DependencyInfo:     dependencyManager,
+			DependencyWriter:   dependencyManager,
+		},
+		core.RemoteApi{},
 	)
 	cmd.Execute()
 }

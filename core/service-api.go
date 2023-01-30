@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,6 +18,7 @@ import (
 type ServiceApi struct {
 	Db                 ports.BrickDB
 	ServicePersistence ports.ServicePersistence
+	ServiceBuilder     ports.ServiceBuilder
 	ParameterResolver  ports.ParameterResolver
 	DependencyInfo     ports.DependencyInfo
 	DependencyWriter   ports.DependencyWriter
@@ -454,15 +454,15 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 }
 
 func (s ServiceApi) Build(path string) error {
-	cmd := exec.Command("make", "build", "-B")
-	cmd.Dir = path
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
 
 	slw := utils.MakeSingleLineWriter(os.Stdout)
-	cmd.Stdout = slw
-	cmd.Stderr = slw
-	err := cmd.Run()
-	slw.Cleanup()
-	return err
+	defer slw.Cleanup()
+
+	return s.ServiceBuilder.Build(service, slw)
 }
 
 func (s ServiceApi) Test() {
