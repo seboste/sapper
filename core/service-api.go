@@ -288,34 +288,32 @@ func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.Pa
 	return nil
 }
 
-// returns highestVersion, highestWorkingVersion
-func findLatestWorkingVersion(versions []SemanticVersion, isWorking func(v SemanticVersion) bool) (*SemanticVersion, *SemanticVersion) {
-	if len(versions) < 1 {
-		return nil, nil
-	}
+// sortedVersions must range from current version to latest version to be considered (must at least have one entry)
+// isWorkinbg is a predicate that checks if a specific version is working
+// returns latest working version
+func findLatestWorkingVersion(sortedVersions []SemanticVersion, isWorking func(v SemanticVersion) bool) SemanticVersion {
 
-	sort.Sort(ByVersion(versions))
+	latestWorkingVersion := sortedVersions[0]
+	sortedVersions = sortedVersions[1:]
 
-	i := len(versions) - 1 // start with highest version
-	highestVersion := versions[i]
-	var highestWorkingVersion *SemanticVersion = nil
-
-	for len(versions) > 1 || (len(versions) == 1 && highestWorkingVersion == nil) {
-
-		if isWorking(versions[i]) {
+	i := len(sortedVersions) - 1
+	for len(sortedVersions) >= 1 {
+		if isWorking(sortedVersions[i]) {
 			//this works => exclude all that are lower than current version
-			currentSemver := versions[i]
-			highestWorkingVersion = &currentSemver
-			versions = versions[i:]
+			latestWorkingVersion = sortedVersions[i]
+			sortedVersions = sortedVersions[i+1:]
 		} else {
-
 			//this version does not work => exclude all that are higher or equal to the current version
-			versions = versions[:i]
+			sortedVersions = sortedVersions[:i]
 		}
-		i = len(versions) / 2
+		i = len(sortedVersions) / 2
 	}
 
-	return &highestVersion, highestWorkingVersion
+	return latestWorkingVersion
+}
+
+type VersionUpgradeSpec struct {
+	previous, target, latestAvailable, latestWorking string
 }
 
 func filterSemvers(in []SemanticVersion, predicate func(SemanticVersion) bool) []SemanticVersion {
@@ -328,77 +326,83 @@ func filterSemvers(in []SemanticVersion, predicate func(SemanticVersion) bool) [
 	return out
 }
 
-func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency, keepMajorVersion bool) (string, error) {
+func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency, keepMajorVersion bool) (VersionUpgradeSpec, error) {
+	vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version} //assume that the current version is working
+
+	//1. determine all available versions
 	availableVersionStrings, err := s.DependencyInfo.AvailableVersions(d.Id)
 	if err != nil {
-		return "", err
+		return vus, err
 	}
 	if len(availableVersionStrings) == 0 {
-		return "", fmt.Errorf("unable to find any versions of %s", d.Id)
+		return vus, fmt.Errorf("unable to find any versions of %s", d.Id)
 	}
+	vus.latestAvailable = availableVersionStrings[len(availableVersionStrings)-1]
 
-	latest := availableVersionStrings[len(availableVersionStrings)-1]
-	if d.Version == latest {
-		fmt.Printf("%s is already up to date (%s)\n", d.Id, d.Version)
-		return d.Version, nil
-	}
-
+	//2. check if we can use semantic versions
 	semvers := []SemanticVersion{}
-	currentSemver, err := ParseSemanticVersion(d.Version)
+	currentSemver, err := ParseSemanticVersion(vus.previous)
 	if err == nil {
 		semvers, err = ConvertToSemVer(availableVersionStrings)
 	}
-	newVersion := ""
-	if err == nil {
-		//use semantic versions
 
-		semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return Less(currentSemver, v) })
+	if err == nil {
+		//yes => use semantic versions
+
+		//a) sort versions
+		sort.Sort(ByVersion(semvers))
+		vus.latestAvailable = semvers[len(semvers)-1].String()
+
+		//a) exclude all old versions
+		semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return !Less(v, currentSemver) })
+		//b) if wanted, exclude all versions with a different major version
 		if keepMajorVersion {
 			semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return currentSemver.Major == v.Major })
 		}
 
-		if len(semvers) == 0 {
-			return d.Version, fmt.Errorf("unable to find any versions of %s higher than current version %v", d.Id, currentSemver)
+		if len(semvers) == 0 { //this should not happen because the current version should always be included
+			vus.target = vus.previous
+			return vus, fmt.Errorf("unable to find any versions of %s that can be considered", d.Id)
 		}
 
-		highestSemver, highestSuccessSemver := findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
-			fmt.Printf("Trying to upgrade to %v\n", v)
+		//early exit?
+		vus.target = semvers[len(semvers)-1].String()
+		if vus.previous == vus.target {
+			return vus, nil
+		}
+
+		vus.latestWorking = findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
+			fmt.Printf("trying to upgrade to %v...", v)
 			err := s.upgradeDependencyToVersion(service, d, v.String())
-			return err == nil
-		})
-
-		if highestSuccessSemver != nil && highestSemver != nil {
-			newVersion = highestSuccessSemver.String()
-			err = s.DependencyWriter.Write(service, d.Id, highestSuccessSemver.String())
-			if err != nil {
-				return "", err
-			}
-			if *highestSemver == *highestSuccessSemver {
-				fmt.Printf("Upgrade from %v to %v succeeded. %s is now up to date.\n", currentSemver, highestSemver, d.Id)
+			if err == nil {
+				fmt.Printf("success\n")
+				return true
 			} else {
-				fmt.Printf("Upgrade from %v to %v failed => upgrade to highest working version %v instead\n", currentSemver, highestSemver, *highestSuccessSemver)
+				fmt.Printf("failed\n")
+				return false
 			}
-		} else {
-			newVersion = currentSemver.String()
-			err = s.DependencyWriter.Write(service, d.Id, currentSemver.String())
-			if err != nil {
-				return "", err
-			}
-			fmt.Printf("Upgrade from %v to %v failed => rolling back to previous version %v instead\n", currentSemver, highestSemver, currentSemver)
-		}
+		}).String()
 	} else {
-		fmt.Printf("%s => simply trying to upgrade to the latest version %s\n", err.Error(), latest)
-		err := s.upgradeDependencyToVersion(service, d, latest)
-		if err != nil {
-			fmt.Printf("Upgrade from %s to %s failed to build => rollback to %s\n", latest, d.Id, d.Version)
-			s.DependencyWriter.Write(service, d.Id, d.Version) //roll back
-			return d.Version, err
+		//no => no semantic versioning, just upgrade to the latest
+		vus.target = vus.latestAvailable
+		if vus.previous == vus.target {
+			return vus, nil
 		}
-		fmt.Printf("Upgrade from %s to %s succeeded\n", d.Version, latest)
-		newVersion = latest
+
+		fmt.Printf("%s => simply trying to upgrade to the latest version %s\n", err.Error(), vus.target)
+		err := s.upgradeDependencyToVersion(service, d, vus.target)
+		if err == nil {
+			vus.latestWorking = vus.target
+		}
 	}
 
-	return newVersion, nil
+	//4. set the latest working version
+	err = s.DependencyWriter.Write(service, d.Id, vus.latestWorking)
+	if err != nil {
+		return vus, err
+	}
+
+	return vus, nil
 }
 
 func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
@@ -407,21 +411,38 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 		return err
 	}
 
-	fmt.Println("building service...")
+	fmt.Printf("building service...")
 	err = s.Build(path)
 	if err != nil {
+		fmt.Println("failed")
 		return err
+	} else {
+		fmt.Println("success")
 	}
 
 	hasError := false
 	for _, d := range service.Dependencies {
 		fmt.Printf("upgrading %s (current version %s)\n", d.Id, d.Version)
-		_, err := s.upgradeDependency(service, d, keepMajorVersion)
+		vus, err := s.upgradeDependency(service, d, keepMajorVersion)
 		if err != nil {
 			fmt.Println(err.Error())
 			hasError = true
 		} else {
-			//fmt.Printf("version of %s has been set from %s to %s\n", d.Id, d.Version, version)
+			if vus.previous == vus.latestAvailable {
+				fmt.Printf("%s is already now up to date. No upgrade required.\n", d.Id)
+			} else if vus.latestWorking == vus.latestAvailable {
+				fmt.Printf("upgrade from %s to %s succeeded. %s is now up to date.\n", vus.previous, vus.latestAvailable, d.Id)
+			} else if vus.latestWorking == vus.target {
+				fmt.Printf("upgrade from %s to %s succeeded. However, there is a newer version %s available.\n", vus.previous, vus.target, vus.latestAvailable)
+			} else if vus.latestWorking != vus.previous {
+				if vus.target == vus.latestAvailable {
+					fmt.Printf("upgrade from %s to %s failed => upgrade to latest working version %s instead\n", vus.previous, vus.target, vus.latestWorking)
+				} else {
+					fmt.Printf("upgrade from %s to %s failed => upgrade to latest working version %s instead. Note that there is an even newer version %s available.\n", vus.previous, vus.target, vus.latestWorking, vus.latestAvailable)
+				}
+			} else if vus.latestWorking == vus.previous {
+				fmt.Printf("upgrade from %s to %s failed => keeping version %s\n", vus.previous, vus.target, vus.previous)
+			}
 		}
 	}
 
