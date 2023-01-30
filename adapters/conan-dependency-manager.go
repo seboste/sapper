@@ -60,18 +60,22 @@ func replaceConanDependency(line string, dep ConanDependency) string {
 }
 
 var sectionExp = regexp.MustCompile(`\[(.*)\]`)
+var commentExp = regexp.MustCompile(`[\s]*#.*`)
 
 func processLines(r io.Reader, op func(line string, section string)) {
 	scanner := bufio.NewScanner(r)
 	currentSection := ""
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		sectionMatch := sectionExp.FindStringSubmatch(line)
-		if len(sectionMatch) == 2 {
-			currentSection = sectionMatch[1]
+		if loc := commentExp.FindStringIndex(line); loc != nil && loc[0] == 0 { // '#'s only indicate a comment if they are at the beginnig of a line
+			op(line, "comment") //use special section 'comment' to indicate that this line is in a comment
+		} else {
+			sectionMatch := sectionExp.FindStringSubmatch(line)
+			if len(sectionMatch) == 2 {
+				currentSection = sectionMatch[1]
+			}
+			op(line, currentSection)
 		}
-		op(line, currentSection)
 	}
 }
 

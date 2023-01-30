@@ -61,6 +61,14 @@ invalid2/ 0.0.1
 dep3/2.3.4
 invalid3
 	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "my_lib", Version: "1.2.3"}, {Id: "dep1", Version: "bla"}, {Id: "dep2", Version: "1.2.3b"}, {Id: "dep3", Version: "2.3.4"}}, wantErr: false},
+		{name: "disabled dependencies", conanfile: `
+[requires]
+#dep1/v1
+# dep2/v1
+ #dep3/v1
+dep4/v1
+#dep4/v2
+	`, args: args{s: testService}, want: []ports.PackageDependency{{Id: "dep4", Version: "v1"}}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -169,6 +177,26 @@ mylib/1.2.2
 [requires]
 mylib/1.2.3
 mylib/1.2.2
+`,
+		},
+		{name: "disabled lib error", cdm: ConanDependencyManager{}, conanfile: `
+		[requires]
+		#mylib/1.2.3
+		`, args: args{s: testService, dependency: "mylib", version: "1.2.4"}, wantErr: true, wantConanfile: `
+		[requires]
+		#mylib/1.2.3
+		`,
+		},
+		{name: "disabled lib preserved", cdm: ConanDependencyManager{}, conanfile: `
+[requires]
+#mylib/1.2.3
+lib/v1
+#this comment needs to be preserved as well
+`, args: args{s: testService, dependency: "lib", version: "v2"}, wantErr: false, wantConanfile: `
+[requires]
+#mylib/1.2.3
+lib/v2
+#this comment needs to be preserved as well
 `,
 		},
 	}
