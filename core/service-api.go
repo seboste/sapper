@@ -454,6 +454,7 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 		return fmt.Errorf("Unable to upgrade all dependencies")
 	}
 
+	fmt.Println("all dependencies are up to date")
 	return nil
 }
 
