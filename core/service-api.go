@@ -275,17 +275,17 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 	return nil
 }
 
-func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) error {
+func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) (string, error) {
 	err := s.DependencyWriter.Write(service, d.Id, targetVersion)
 	if err != nil {
-		return err
+		return "", err
 	}
-	err = s.Build(service.Path)
+	buildLogFileName, err := s.Build(service.Path)
 	if err != nil {
-		return err
+		return buildLogFileName, err
 	}
 
-	return nil
+	return buildLogFileName, nil
 }
 
 // sortedVersions must range from current version to latest version to be considered (must at least have one entry)
@@ -373,12 +373,12 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 
 		vus.latestWorking = findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
 			fmt.Printf("trying to upgrade to %v...", v)
-			err := s.upgradeDependencyToVersion(service, d, v.String())
+			buildLogFilename, err := s.upgradeDependencyToVersion(service, d, v.String())
 			if err == nil {
 				fmt.Printf("success\n")
 				return true
 			} else {
-				fmt.Printf("failed\n")
+				fmt.Printf("failed (see %s for details)\n", buildLogFilename)
 				return false
 			}
 		}).String()
@@ -389,11 +389,15 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 			return vus, nil
 		}
 
-		fmt.Printf("%s => simply trying to upgrade to the latest version %s\n", err.Error(), vus.target)
-		err := s.upgradeDependencyToVersion(service, d, vus.target)
+		fmt.Printf("%s => simply trying to upgrade to the latest version %s...", err.Error(), vus.target)
+		buildLogFilename, err := s.upgradeDependencyToVersion(service, d, vus.target)
 		if err == nil {
 			vus.latestWorking = vus.target
+			fmt.Printf("success\n")
+		} else {
+			fmt.Printf("failed (see %s for details)", buildLogFilename)
 		}
+
 	}
 
 	//4. set the latest working version
@@ -412,9 +416,9 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 	}
 
 	fmt.Printf("building service...")
-	err = s.Build(path)
+	buildLogFilename, err := s.Build(path)
 	if err != nil {
-		fmt.Println("failed")
+		fmt.Printf("failed (see %s for details)\n", buildLogFilename)
 		return err
 	} else {
 		fmt.Println("success")
@@ -453,16 +457,28 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 	return nil
 }
 
-func (s ServiceApi) Build(path string) error {
+func (s ServiceApi) Build(path string) (string, error) {
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	f, err := ioutil.TempFile("", "sapper_build_log_*.log")
+	if err != nil {
+		return "", err
 	}
 
 	slw := utils.MakeSingleLineWriter(os.Stdout)
 	defer slw.Cleanup()
 
-	return s.ServiceBuilder.Build(service, slw)
+	err = s.ServiceBuilder.Build(service, io.MultiWriter(slw, f))
+	if err != nil {
+		return f.Name(), err
+	} else {
+		os.Remove(f.Name())
+		return "", nil
+	}
+
 }
 
 func (s ServiceApi) Test() {
