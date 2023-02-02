@@ -43,6 +43,22 @@ var addBrickCmd = &cobra.Command{
 	},
 }
 
+var upgradeBrickCmd = &cobra.Command{
+	Use:   "upgrade [brickId]",
+	Short: "upgrades the dependencies of a brick",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) < 1 {
+			fmt.Println("brick id argument is missing")
+			return
+		}
+		brickId := args[0]
+		if err := brickApi.Upgrade(brickId); err != nil {
+			fmt.Println(err)
+			return
+		}
+	},
+}
+
 var listBrickCmd = &cobra.Command{
 	Use:   "list [template]",
 	Short: "Displays information about building bricks",
@@ -73,6 +89,7 @@ var searchBrickCmd = &cobra.Command{
 
 func init() {
 	brickCmd.AddCommand(addBrickCmd)
+	brickCmd.AddCommand(upgradeBrickCmd)
 	brickCmd.AddCommand(listBrickCmd)
 	brickCmd.AddCommand(searchBrickCmd)
 

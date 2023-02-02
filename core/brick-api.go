@@ -62,6 +62,15 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 	return nil
 }
 
+func (b BrickApi) Upgrade(brickId string) error {
+	brick, err := b.Db.Brick(brickId)
+	if err != nil {
+		return err
+	}
+	fmt.Println(brick.Dependencies)
+	return nil
+}
+
 func (b BrickApi) List() []ports.Brick {
 	return b.Db.Bricks(ports.Extension)
 }
