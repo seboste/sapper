@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"io"
-	"os"
 )
 
 const escape = "\x1b"
@@ -48,8 +47,8 @@ func (slw SingleLineWriter) Write(p []byte) (int, error) {
 }
 
 func (slw SingleLineWriter) Cleanup() {
-	fmt.Fprintf(os.Stdout, "%s[u", escape) //return to saved position
-	fmt.Fprintf(os.Stdout, "%s[J", escape) //erase everything that has been written
+	fmt.Fprintf(slw.writer, "%s[u", escape) //return to saved position
+	fmt.Fprintf(slw.writer, "%s[J", escape) //erase everything that has been written
 	*slw.hasEndedWithNewline = false
 }
 
