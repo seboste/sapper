@@ -79,7 +79,14 @@ var buildServiceCmd = &cobra.Command{
 			fmt.Println("service folder argument is missing")
 			return
 		}
-		serviceApi.Build(args[0])
+
+		fmt.Printf("building service...")
+		buildLogFilename, err := serviceApi.Build(args[0])
+		if err != nil {
+			fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+		} else {
+			fmt.Println("success")
+		}
 	},
 }
 
