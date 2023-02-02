@@ -212,7 +212,6 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 		return bricks, fmt.Errorf("invalid brick %s", brickId)
 	}
 
-	bricks = append(bricks, brick)
 	brickIds[brick.Id] = true
 
 	//deep copy to identify cyclic dependencies
@@ -234,6 +233,8 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 			}
 		}
 	}
+
+	bricks = append(bricks, brick)
 
 	return bricks, nil
 }

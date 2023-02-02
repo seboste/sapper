@@ -401,9 +401,15 @@ func TestGetBricksRecursive(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "single_dependency",
+			args:    args{brickId: "brick2", db: testBrickDb},
+			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}, {Id: "brick2", Dependencies: []string{"brick4"}}},
+			wantErr: false,
+		},
+		{
 			name:    "diamond",
 			args:    args{brickId: "brick1", db: testBrickDb},
-			want:    []ports.Brick{{Id: "brick1", Dependencies: []string{"brick2", "brick3"}}, {Id: "brick2", Dependencies: []string{"brick4"}}, {Id: "brick4", Dependencies: []string{}}, {Id: "brick3", Dependencies: []string{"brick4"}}},
+			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}, {Id: "brick2", Dependencies: []string{"brick4"}}, {Id: "brick3", Dependencies: []string{"brick4"}}, {Id: "brick1", Dependencies: []string{"brick2", "brick3"}}},
 			wantErr: false,
 		},
 		{
