@@ -69,7 +69,10 @@ func (b BrickApi) Upgrade(brickId string) error {
 		return err
 	}
 
-	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick)
+	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick, func(line string, state string) (bool, string) {
+		state = getCurrentSection(line, state)
+		return state == "CONAN-DEPENDENCIES", state
+	})
 
 	fmt.Println(dependencies)
 	return nil

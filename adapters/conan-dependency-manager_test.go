@@ -263,3 +263,33 @@ func TestConanDependency_String(t *testing.T) {
 		})
 	}
 }
+
+func Test_isInConanRequiresSection(t *testing.T) {
+	type args struct {
+		line  string
+		state string
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantIsActive bool
+		wantState    string
+	}{
+		{name: "outside requires section", args: args{line: "bla bla", state: "outside"}, wantIsActive: false, wantState: "outside"},
+		{name: "comes into requires section", args: args{line: "[requires]", state: "prev"}, wantIsActive: true, wantState: "requires"},
+		{name: "in requires section", args: args{line: "bla bla", state: "requires"}, wantIsActive: true, wantState: "requires"},
+		{name: "leaves requires section", args: args{line: "[other]", state: "requires"}, wantIsActive: false, wantState: "other"},
+		{name: "comment", args: args{line: " # this is a comment ", state: "requires"}, wantIsActive: false, wantState: "requires"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotIsActive, gotState := isInConanRequiresSection(tt.args.line, tt.args.state)
+			if gotIsActive != tt.wantIsActive {
+				t.Errorf("conanFileSectionProvider() gotIsActive = %v, want %v", gotIsActive, tt.wantIsActive)
+			}
+			if gotState != tt.wantState {
+				t.Errorf("conanFileSectionProvider() gotState = %v, want %v", gotState, tt.wantState)
+			}
+		})
+	}
+}

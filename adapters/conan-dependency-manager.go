@@ -62,46 +62,58 @@ func replaceConanDependency(line string, dep ConanDependency) string {
 var sectionExp = regexp.MustCompile(`\[(.*)\]`)
 var commentExp = regexp.MustCompile(`[\s]*#.*`)
 
-func processLines(r io.Reader, op func(line string, section string)) {
+func isInConanRequiresSection(line string, state string) (bool, string) {
+	section := state                                                        //return this section until a different section is active
+	if loc := commentExp.FindStringIndex(line); loc != nil && loc[0] == 0 { // '#'s only indicate a comment if they are at the beginnig of a line
+		section = "comment" //use special section 'comment' to indicate that this line is in a comment. Do not change the state here
+	} else {
+		sectionMatch := sectionExp.FindStringSubmatch(line)
+		if len(sectionMatch) == 2 {
+			section = sectionMatch[1]
+			state = section //state change
+		}
+	}
+	return section == "requires", state
+}
+
+func processLines(r io.Reader, op func(line string, isActive bool), p ports.PacakgeDependencySectionPredicate) {
 	scanner := bufio.NewScanner(r)
-	currentSection := ""
+	state := ""
 	for scanner.Scan() {
 		line := scanner.Text()
-		if loc := commentExp.FindStringIndex(line); loc != nil && loc[0] == 0 { // '#'s only indicate a comment if they are at the beginnig of a line
-			op(line, "comment") //use special section 'comment' to indicate that this line is in a comment
-		} else {
-			sectionMatch := sectionExp.FindStringSubmatch(line)
-			if len(sectionMatch) == 2 {
-				currentSection = sectionMatch[1]
-			}
-			op(line, currentSection)
-		}
+		var isActive bool
+		isActive, state = p(line, state)
+		op(line, isActive)
 	}
 }
 
-func (cdm ConanDependencyManager) ReadFromService(s ports.Service) ([]ports.PackageDependency, error) {
+func readDependenciesFromConanfile(path string, p ports.PacakgeDependencySectionPredicate) ([]ports.PackageDependency, error) {
 	dependencies := []ports.PackageDependency{}
 
-	conanFilePath := filepath.Join(s.Path, "conanfile.txt")
+	conanFilePath := filepath.Join(path, "conanfile.txt")
 	f, err := os.Open(conanFilePath)
 	if err != nil {
 		return []ports.PackageDependency{}, err
 	}
 
-	processLines(f, func(line string, section string) {
-		if section == "requires" {
+	processLines(f, func(line string, isActive bool) {
+		if isActive {
 			dep, err := parseConanDependency(line)
 			if err == nil {
 				dependencies = append(dependencies, ports.PackageDependency{Id: dep.Id, Version: dep.Version})
 			}
 		}
-	})
+	}, p)
 
 	return dependencies, nil
 }
 
-func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick) ([]ports.PackageDependency, error) {
-	return nil, nil
+func (cdm ConanDependencyManager) ReadFromService(s ports.Service) ([]ports.PackageDependency, error) {
+	return readDependenciesFromConanfile(s.Path, isInConanRequiresSection)
+}
+
+func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick, p ports.PacakgeDependencySectionPredicate) ([]ports.PackageDependency, error) {
+	return readDependenciesFromConanfile(b.BasePath, p)
 }
 
 func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency string, version string) error {
@@ -114,8 +126,8 @@ func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency str
 
 	var outputContent string
 	replaceCount := 0
-	processLines(strings.NewReader(string(content)), func(line string, section string) {
-		if section == "requires" {
+	processLines(strings.NewReader(string(content)), func(line string, isActive bool) {
+		if isActive {
 			dep, err := parseConanDependency(line)
 			if err == nil && dep.Id == dependency {
 				dep.Version = version
@@ -125,7 +137,7 @@ func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency str
 		}
 
 		outputContent = outputContent + fmt.Sprintln(line)
-	})
+	}, isInConanRequiresSection)
 	if replaceCount != 1 {
 		return fmt.Errorf("unable to set version %s of package %s", version, dependency)
 	}
