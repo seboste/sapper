@@ -2,15 +2,20 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
+	"github.com/seboste/sapper/utils"
 )
 
 type BrickApi struct {
 	Db                      ports.BrickDB
 	ServicePersistence      ports.ServicePersistence
 	PackageDependencyReader ports.PackageDependencyReader
+	DependencyInfo          ports.DependencyInfo
+	ServiceApi              ports.ServiceApi
 }
 
 func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency) []ports.Brick {
@@ -74,7 +79,58 @@ func (b BrickApi) Upgrade(brickId string) error {
 		return state == "CONAN-DEPENDENCIES", state
 	})
 
-	fmt.Println(dependencies)
+	if err != nil {
+		return err
+	}
+
+	allUptodate := true
+	for _, d := range dependencies {
+		vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version}
+		availableVersionStrings, err := b.DependencyInfo.AvailableVersions(d.Id)
+		if err != nil {
+			fmt.Printf("%s: unable to find any versions (%v)\n", d.Id, err)
+		} else if len(availableVersionStrings) == 0 {
+			fmt.Printf("%s: unable to find any versions\n", d.Id)
+		} else {
+			vus.latestAvailable = availableVersionStrings[len(availableVersionStrings)-1]
+			vus.target = vus.latestAvailable
+			if vus.UpgradeRequired() {
+				fmt.Printf("%s: scheduled for upgrade from %s to %s \n", d.Id, vus.previous, vus.target)
+				allUptodate = false
+			} else {
+				fmt.Printf("%s: current version %s is already now up to date. No upgrade required.\n", d.Id, vus.previous)
+			}
+		}
+	}
+
+	if allUptodate {
+		fmt.Println("all dependencies are up to date. Nothing to do.")
+		return nil
+	}
+
+	parentDir, err := ioutil.TempDir("", "sapper_upgrade_*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(parentDir)
+
+	fmt.Printf("creating temp service...")
+	service, err := b.ServiceApi.Add(brickId, parentDir, utils.DummyParameterResolver{})
+	if err != nil {
+		fmt.Printf("failed\n")
+		return err
+	}
+	fmt.Printf("success\n")
+
+	fmt.Printf("building service...")
+	buildLogFilename, err := b.ServiceApi.Build(service.Path)
+	if err != nil {
+		fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+		return err
+	} else {
+		fmt.Printf("success\n")
+	}
+
 	return nil
 }
 

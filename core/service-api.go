@@ -238,43 +238,42 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 	return bricks, nil
 }
 
-func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
+func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) (ports.Service, error) {
+	service := ports.Service{}
 
 	bricks, err := GetBricksRecursive(templateName, s.Db, map[string]bool{})
 	if err != nil {
-		return err
+		return service, err
 	}
 
 	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
 	if err != nil {
-		return err
+		return service, err
 	}
 
 	if len(bricks) == 0 {
-		return fmt.Errorf("invalid template %s", templateName)
+		return service, fmt.Errorf("invalid template %s", templateName)
 	}
 
-	serviceName := parameters["NAME"]
-	if serviceName == "" {
-		return fmt.Errorf("invalid service name %s", serviceName)
+	service.Id = parameters["NAME"]
+	if service.Id == "" {
+		return service, fmt.Errorf("invalid service name %s", service.Id)
 	}
-	outputBasePath := filepath.Join(parentDir, serviceName)
-	if err := os.MkdirAll(outputBasePath, os.ModePerm); err != nil {
-		return err
+	service.Path = filepath.Join(parentDir, service.Id)
+	if err := os.MkdirAll(service.Path, os.ModePerm); err != nil {
+		return service, err
 	}
-
-	service := ports.Service{Id: serviceName, Path: outputBasePath}
 
 	for _, brick := range bricks {
 		if err := AddSingleBrick(&service, brick, parameters); err != nil {
-			return err
+			return service, err
 		}
 	}
 
 	if err := s.ServicePersistence.Save(service); err != nil {
-		return err
+		return service, err
 	}
-	return nil
+	return service, err
 }
 
 func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) (string, error) {
@@ -312,10 +311,6 @@ func findLatestWorkingVersion(sortedVersions []SemanticVersion, isWorking func(v
 	}
 
 	return latestWorkingVersion
-}
-
-type VersionUpgradeSpec struct {
-	previous, target, latestAvailable, latestWorking string
 }
 
 func filterSemvers(in []SemanticVersion, predicate func(SemanticVersion) bool) []SemanticVersion {
@@ -433,21 +428,7 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 			fmt.Fprintln(s.Stdout, err.Error())
 			hasError = true
 		} else {
-			if vus.previous == vus.latestAvailable {
-				fmt.Fprintf(s.Stdout, "%s is already now up to date. No upgrade required.\n", d.Id)
-			} else if vus.latestWorking == vus.latestAvailable {
-				fmt.Fprintf(s.Stdout, "upgrade from %s to %s succeeded. %s is now up to date.\n", vus.previous, vus.latestAvailable, d.Id)
-			} else if vus.latestWorking == vus.target {
-				fmt.Fprintf(s.Stdout, "upgrade from %s to %s succeeded. However, there is a newer version %s available.\n", vus.previous, vus.target, vus.latestAvailable)
-			} else if vus.latestWorking != vus.previous {
-				if vus.target == vus.latestAvailable {
-					fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => upgrade to latest working version %s instead\n", vus.previous, vus.target, vus.latestWorking)
-				} else {
-					fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => upgrade to latest working version %s instead. Note that there is an even newer version %s available.\n", vus.previous, vus.target, vus.latestWorking, vus.latestAvailable)
-				}
-			} else if vus.latestWorking == vus.previous {
-				fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => keeping version %s\n", vus.previous, vus.target, vus.previous)
-			}
+			vus.PrintStatus(s.Stdout, d)
 		}
 	}
 

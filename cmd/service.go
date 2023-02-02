@@ -34,7 +34,7 @@ var addServiceCmd = &cobra.Command{
 			return
 		}
 
-		if err := serviceApi.Add(template, path, r); err != nil {
+		if _, err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
 	},

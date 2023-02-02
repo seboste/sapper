@@ -20,21 +20,22 @@ func main() {
 	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
 	ServiceBuilder := adapters.CMakeService{}
 
-	cmd.SetApis(
-		core.BrickApi{Db: brickDb,
-			PackageDependencyReader: dependencyManager,
-			ServicePersistence:      servicePersistence,
-		},
-		core.ServiceApi{
-			Db:                 brickDb,
-			ServicePersistence: servicePersistence,
-			ServiceBuilder:     ServiceBuilder,
-			DependencyInfo:     dependencyManager,
-			DependencyWriter:   dependencyManager,
-			Stdout:             os.Stdout,
-			Stderr:             os.Stderr,
-		},
-		core.RemoteApi{},
-	)
+	serviceApi := core.ServiceApi{
+		Db:                 brickDb,
+		ServicePersistence: servicePersistence,
+		ServiceBuilder:     ServiceBuilder,
+		DependencyInfo:     dependencyManager,
+		DependencyWriter:   dependencyManager,
+		Stdout:             os.Stdout,
+		Stderr:             os.Stderr,
+	}
+
+	brickApi := core.BrickApi{Db: brickDb,
+		PackageDependencyReader: dependencyManager,
+		DependencyInfo:          dependencyManager,
+		ServicePersistence:      servicePersistence,
+		ServiceApi:              serviceApi,
+	}
+	cmd.SetApis(brickApi, serviceApi, core.RemoteApi{})
 	cmd.Execute()
 }
