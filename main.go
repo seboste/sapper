@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/seboste/sapper/adapters"
 	"github.com/seboste/sapper/cmd"
@@ -27,6 +28,8 @@ func main() {
 			ServiceBuilder:     ServiceBuilder,
 			DependencyInfo:     dependencyManager,
 			DependencyWriter:   dependencyManager,
+			Stdout:             os.Stdout,
+			Stderr:             os.Stderr,
 		},
 		core.RemoteApi{},
 	)

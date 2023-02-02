@@ -22,6 +22,8 @@ type ServiceApi struct {
 	ParameterResolver  ports.ParameterResolver
 	DependencyInfo     ports.DependencyInfo
 	DependencyWriter   ports.DependencyWriter
+	Stdout             io.Writer
+	Stderr             io.Writer
 }
 
 func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (map[string]string, error) {
@@ -372,13 +374,13 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 		}
 
 		vus.latestWorking = findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
-			fmt.Printf("trying to upgrade to %v...", v)
+			fmt.Fprintf(s.Stdout, "trying to upgrade to %v...", v)
 			buildLogFilename, err := s.upgradeDependencyToVersion(service, d, v.String())
 			if err == nil {
-				fmt.Printf("success\n")
+				fmt.Fprintf(s.Stdout, "success\n")
 				return true
 			} else {
-				fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+				fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
 				return false
 			}
 		}).String()
@@ -389,15 +391,14 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 			return vus, nil
 		}
 
-		fmt.Printf("%s => simply trying to upgrade to the latest version %s...", err.Error(), vus.target)
+		fmt.Fprintf(s.Stdout, "%s => simply trying to upgrade to the latest version %s...", err.Error(), vus.target)
 		buildLogFilename, err := s.upgradeDependencyToVersion(service, d, vus.target)
 		if err == nil {
 			vus.latestWorking = vus.target
-			fmt.Printf("success\n")
+			fmt.Fprintf(s.Stdout, "success\n")
 		} else {
-			fmt.Printf("failed (see %s for details)", buildLogFilename)
+			fmt.Fprintf(s.Stdout, "failed (see %s for details)", buildLogFilename)
 		}
-
 	}
 
 	//4. set the latest working version
@@ -415,37 +416,37 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 		return err
 	}
 
-	fmt.Printf("building service...")
+	fmt.Fprintf(s.Stdout, "building service...")
 	buildLogFilename, err := s.Build(path)
 	if err != nil {
-		fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+		fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
 		return err
 	} else {
-		fmt.Println("success")
+		fmt.Fprintln(s.Stdout, "success")
 	}
 
 	hasError := false
 	for _, d := range service.Dependencies {
-		fmt.Printf("upgrading %s (current version %s)\n", d.Id, d.Version)
+		fmt.Fprintf(s.Stdout, "upgrading %s (current version %s)\n", d.Id, d.Version)
 		vus, err := s.upgradeDependency(service, d, keepMajorVersion)
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Fprintln(s.Stdout, err.Error())
 			hasError = true
 		} else {
 			if vus.previous == vus.latestAvailable {
-				fmt.Printf("%s is already now up to date. No upgrade required.\n", d.Id)
+				fmt.Fprintf(s.Stdout, "%s is already now up to date. No upgrade required.\n", d.Id)
 			} else if vus.latestWorking == vus.latestAvailable {
-				fmt.Printf("upgrade from %s to %s succeeded. %s is now up to date.\n", vus.previous, vus.latestAvailable, d.Id)
+				fmt.Fprintf(s.Stdout, "upgrade from %s to %s succeeded. %s is now up to date.\n", vus.previous, vus.latestAvailable, d.Id)
 			} else if vus.latestWorking == vus.target {
-				fmt.Printf("upgrade from %s to %s succeeded. However, there is a newer version %s available.\n", vus.previous, vus.target, vus.latestAvailable)
+				fmt.Fprintf(s.Stdout, "upgrade from %s to %s succeeded. However, there is a newer version %s available.\n", vus.previous, vus.target, vus.latestAvailable)
 			} else if vus.latestWorking != vus.previous {
 				if vus.target == vus.latestAvailable {
-					fmt.Printf("upgrade from %s to %s failed => upgrade to latest working version %s instead\n", vus.previous, vus.target, vus.latestWorking)
+					fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => upgrade to latest working version %s instead\n", vus.previous, vus.target, vus.latestWorking)
 				} else {
-					fmt.Printf("upgrade from %s to %s failed => upgrade to latest working version %s instead. Note that there is an even newer version %s available.\n", vus.previous, vus.target, vus.latestWorking, vus.latestAvailable)
+					fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => upgrade to latest working version %s instead. Note that there is an even newer version %s available.\n", vus.previous, vus.target, vus.latestWorking, vus.latestAvailable)
 				}
 			} else if vus.latestWorking == vus.previous {
-				fmt.Printf("upgrade from %s to %s failed => keeping version %s\n", vus.previous, vus.target, vus.previous)
+				fmt.Fprintf(s.Stdout, "upgrade from %s to %s failed => keeping version %s\n", vus.previous, vus.target, vus.previous)
 			}
 		}
 	}
@@ -454,7 +455,7 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 		return fmt.Errorf("Unable to upgrade all dependencies")
 	}
 
-	fmt.Println("all dependencies are up to date")
+	fmt.Fprintln(s.Stdout, "all dependencies are up to date")
 	return nil
 }
 
@@ -469,7 +470,7 @@ func (s ServiceApi) Build(path string) (string, error) {
 		return "", err
 	}
 
-	slw := utils.MakeSingleLineWriter(os.Stdout)
+	slw := utils.MakeSingleLineWriter(s.Stdout)
 	defer slw.Cleanup()
 
 	err = s.ServiceBuilder.Build(service, io.MultiWriter(slw, f))
@@ -483,7 +484,7 @@ func (s ServiceApi) Build(path string) (string, error) {
 }
 
 func (s ServiceApi) Test() {
-	fmt.Println("test")
+	fmt.Fprintln(s.Stdout, "test")
 }
 
 func (s ServiceApi) Describe(path string, writer io.Writer) error {
@@ -515,7 +516,7 @@ func (s ServiceApi) Describe(path string, writer io.Writer) error {
 }
 
 func (s ServiceApi) Deploy() {
-	fmt.Println("deploy")
+	fmt.Fprintln(s.Stdout, "deploy")
 }
 
 var _ ports.ServiceApi = ServiceApi{}
