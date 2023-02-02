@@ -79,7 +79,7 @@ func processLines(r io.Reader, op func(line string, section string)) {
 	}
 }
 
-func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependency, error) {
+func (cdm ConanDependencyManager) ReadFromService(s ports.Service) ([]ports.PackageDependency, error) {
 	dependencies := []ports.PackageDependency{}
 
 	conanFilePath := filepath.Join(s.Path, "conanfile.txt")
@@ -100,7 +100,11 @@ func (cdm ConanDependencyManager) Read(s ports.Service) ([]ports.PackageDependen
 	return dependencies, nil
 }
 
-func (cdm ConanDependencyManager) Write(s ports.Service, dependency string, version string) error {
+func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick) ([]ports.PackageDependency, error) {
+	return nil, nil
+}
+
+func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency string, version string) error {
 
 	conanfilePath := filepath.Join(s.Path, "conanfile.txt")
 	content, err := ioutil.ReadFile(conanfilePath)
@@ -153,6 +157,6 @@ func (cdm ConanDependencyManager) AvailableVersions(dependency string) ([]string
 	return versions, err
 }
 
-var _ ports.DependencyReader = ConanDependencyManager{}
-var _ ports.DependencyWriter = ConanDependencyManager{}
+var _ ports.PackageDependencyReader = ConanDependencyManager{}
+var _ ports.PackageDependencyWriter = ConanDependencyManager{}
 var _ ports.DependencyInfo = ConanDependencyManager{}

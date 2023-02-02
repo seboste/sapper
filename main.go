@@ -21,7 +21,10 @@ func main() {
 	ServiceBuilder := adapters.CMakeService{}
 
 	cmd.SetApis(
-		core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence},
+		core.BrickApi{Db: brickDb,
+			PackageDependencyReader: dependencyManager,
+			ServicePersistence:      servicePersistence,
+		},
 		core.ServiceApi{
 			Db:                 brickDb,
 			ServicePersistence: servicePersistence,

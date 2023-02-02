@@ -83,7 +83,7 @@ dep4/v1
 			}
 
 			//2. execute test
-			got, err := cdm.Read(tt.args.s)
+			got, err := cdm.ReadFromService(tt.args.s)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ConanDependencyManager.Read() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -212,7 +212,7 @@ lib/v2
 			}
 
 			//2. execute test
-			if err := cdm.Write(tt.args.s, tt.args.dependency, tt.args.version); (err != nil) != tt.wantErr {
+			if err := cdm.WriteToService(tt.args.s, tt.args.dependency, tt.args.version); (err != nil) != tt.wantErr {
 				t.Errorf("ConanDependencyManager.Write() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

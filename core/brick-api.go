@@ -8,8 +8,9 @@ import (
 )
 
 type BrickApi struct {
-	Db                 ports.BrickDB
-	ServicePersistence ports.ServicePersistence
+	Db                      ports.BrickDB
+	ServicePersistence      ports.ServicePersistence
+	PackageDependencyReader ports.PackageDependencyReader
 }
 
 func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency) []ports.Brick {
@@ -67,7 +68,10 @@ func (b BrickApi) Upgrade(brickId string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(brick.Dependencies)
+
+	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick)
+
+	fmt.Println(dependencies)
 	return nil
 }
 

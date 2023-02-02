@@ -5,12 +5,13 @@ type PackageDependency struct {
 	Version string
 }
 
-type DependencyReader interface {
-	Read(s Service) ([]PackageDependency, error)
+type PackageDependencyReader interface {
+	ReadFromService(s Service) ([]PackageDependency, error)
+	ReadFromBrick(b Brick) ([]PackageDependency, error)
 }
 
-type DependencyWriter interface {
-	Write(s Service, dependency string, version string) error
+type PackageDependencyWriter interface {
+	WriteToService(s Service, dependency string, version string) error
 }
 
 type DependencyInfo interface {

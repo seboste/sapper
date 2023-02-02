@@ -21,7 +21,7 @@ type ServiceApi struct {
 	ServiceBuilder     ports.ServiceBuilder
 	ParameterResolver  ports.ParameterResolver
 	DependencyInfo     ports.DependencyInfo
-	DependencyWriter   ports.DependencyWriter
+	DependencyWriter   ports.PackageDependencyWriter
 	Stdout             io.Writer
 	Stderr             io.Writer
 }
@@ -278,7 +278,7 @@ func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver
 }
 
 func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) (string, error) {
-	err := s.DependencyWriter.Write(service, d.Id, targetVersion)
+	err := s.DependencyWriter.WriteToService(service, d.Id, targetVersion)
 	if err != nil {
 		return "", err
 	}
@@ -402,7 +402,7 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 	}
 
 	//4. set the latest working version
-	err = s.DependencyWriter.Write(service, d.Id, vus.latestWorking)
+	err = s.DependencyWriter.WriteToService(service, d.Id, vus.latestWorking)
 	if err != nil {
 		return vus, err
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 type FileSystemServicePersistence struct {
-	DependencyReader ports.DependencyReader
+	DependencyReader ports.PackageDependencyReader
 }
 
 func (fsp FileSystemServicePersistence) Load(path string) (ports.Service, error) {
@@ -26,7 +26,7 @@ func (fsp FileSystemServicePersistence) Load(path string) (ports.Service, error)
 		return s, err
 	}
 
-	s.Dependencies, err = fsp.DependencyReader.Read(s)
+	s.Dependencies, err = fsp.DependencyReader.ReadFromService(s)
 	if err != nil {
 		return s, err
 	}
