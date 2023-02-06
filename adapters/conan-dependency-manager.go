@@ -113,7 +113,11 @@ func (cdm ConanDependencyManager) ReadFromService(s ports.Service) ([]ports.Pack
 }
 
 func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick, p ports.PackageDependencySectionPredicate) ([]ports.PackageDependency, error) {
-	return readDependenciesFromConanfile(b.BasePath, p)
+	deps, err := readDependenciesFromConanfile(b.BasePath, p)
+	if os.IsNotExist(err) { //it is ok if the conanfile.txt does not exist for a brick => there are just no dependencies
+		return []ports.PackageDependency{}, nil
+	}
+	return deps, err
 }
 
 func writeDependenciesToConanfile(path string, dependencies []ports.PackageDependency, p ports.PackageDependencySectionPredicate) error {
