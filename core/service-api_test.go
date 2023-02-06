@@ -719,8 +719,8 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 				ServiceBuilder:     tt.fields.udm,
 				DependencyInfo:     tt.fields.udm,
 				DependencyWriter:   tt.fields.udm,
-				Stdout:             io.Discard,
-				Stderr:             io.Discard,
+				Stdout:             ioutil.Discard,
+				Stderr:             ioutil.Discard,
 			}
 			s.upgradeDependency(tt.args.service, tt.args.d, tt.args.keepMajorVersion)
 			got, err := s.upgradeDependency(tt.args.service, tt.args.d, tt.args.keepMajorVersion)
