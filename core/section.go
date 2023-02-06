@@ -87,3 +87,16 @@ func readSections(data string) ([]section, error) {
 	}
 	return sections, nil
 }
+
+func getCurrentSection(line string, section string) string {
+	if t := readTag(line); t != nil {
+		if t.begin && section == "" {
+			section = t.name
+		} else if section == t.name && !t.begin {
+			section = ""
+		} else {
+			//invalid case (e.g. due to forbidden nested sections)
+		}
+	}
+	return section
+}

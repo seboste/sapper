@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/seboste/sapper/adapters"
@@ -12,6 +13,8 @@ var serviceCmd = &cobra.Command{
 	Use:   "service",
 	Short: "Manage C++ microservices",
 }
+
+var keepMajorVersion *bool
 
 var addServiceCmd = &cobra.Command{
 	Use:   "add [folder]",
@@ -31,22 +34,44 @@ var addServiceCmd = &cobra.Command{
 			return
 		}
 
-		if err := serviceApi.Add(template, path, r); err != nil {
+		if _, err := serviceApi.Add(template, path, r); err != nil {
 			fmt.Println(err)
 		}
 	},
 }
 
-var updateServiceCmd = &cobra.Command{
-	Use:   "update [template]",
-	Short: "Updates the dependencies of the service",
+var describeServiceCmd = &cobra.Command{
+	Use:   "describe [service folder]",
+	Short: "Prints information about a service",
 	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Update()
+		if len(args) < 1 {
+			fmt.Println("service folder argument is missing")
+			return
+		}
+		err := serviceApi.Describe(args[0], os.Stdout)
+
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	},
+}
+
+var upgradeServiceCmd = &cobra.Command{
+	Use:   "upgrade [service folder]",
+	Short: "upgrades the dependencies of the service",
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.PersistentFlags()
+		err := serviceApi.Upgrade(args[0], *keepMajorVersion)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	},
 }
 
 var buildServiceCmd = &cobra.Command{
-	Use:   "build [template]",
+	Use:   "build [service folder]",
 	Short: "Builds the service",
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -54,7 +79,14 @@ var buildServiceCmd = &cobra.Command{
 			fmt.Println("service folder argument is missing")
 			return
 		}
-		serviceApi.Build(args[0])
+
+		fmt.Printf("building service...")
+		buildLogFilename, err := serviceApi.Build(args[0])
+		if err != nil {
+			fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+		} else {
+			fmt.Println("success")
+		}
 	},
 }
 
@@ -76,7 +108,8 @@ var deployServiceCmd = &cobra.Command{
 
 func init() {
 	serviceCmd.AddCommand(addServiceCmd)
-	serviceCmd.AddCommand(updateServiceCmd)
+	serviceCmd.AddCommand(describeServiceCmd)
+	serviceCmd.AddCommand(upgradeServiceCmd)
 	serviceCmd.AddCommand(buildServiceCmd)
 	serviceCmd.AddCommand(testServiceCmd)
 	serviceCmd.AddCommand(deployServiceCmd)
@@ -85,6 +118,8 @@ func init() {
 
 	addServiceCmd.PersistentFlags().StringP("template", "t", "base-hexagonal-skeleton", "The id of a service template.")
 	adapters.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
+
+	keepMajorVersion = upgradeServiceCmd.PersistentFlags().Bool("keep-major", false, "Upgrades are only conducted within the same major version of a dependency's semantic version")
 
 	// Here you will define your flags and configuration settings.
 

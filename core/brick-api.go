@@ -2,14 +2,21 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
+	"github.com/seboste/sapper/utils"
 )
 
 type BrickApi struct {
-	Db                 ports.BrickDB
-	ServicePersistence ports.ServicePersistence
+	Db                      ports.BrickDB
+	ServicePersistence      ports.ServicePersistence
+	PackageDependencyReader ports.BrickPackageDependencyReader
+	PackageDependencyWriter ports.BrickPackageDependencyWriter
+	DependencyInfo          ports.DependencyInfo
+	ServiceApi              ServiceApi
 }
 
 func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency) []ports.Brick {
@@ -59,6 +66,104 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 	if err := b.ServicePersistence.Save(service); err != nil {
 		return err
 	}
+	return nil
+}
+
+func isInDependencySection(line string, state string) (bool, string) {
+	state = getCurrentSection(line, state)
+	return state == "CONAN-DEPENDENCIES", state
+}
+
+func (b BrickApi) Upgrade(brickId string) error {
+	//1. read package dependencies from brick
+	brick, err := b.Db.Brick(brickId)
+	if err != nil {
+		return err
+	}
+	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick, isInDependencySection)
+	if err != nil {
+		return err
+	}
+
+	//2. check if update is required
+	allUptodate := true
+	for _, d := range dependencies {
+		vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version}
+		availableVersionStrings, err := b.DependencyInfo.AvailableVersions(d.Id)
+		if err != nil {
+			fmt.Printf("%s: unable to find any versions (%v)\n", d.Id, err)
+		} else if len(availableVersionStrings) == 0 {
+			fmt.Printf("%s: unable to find any versions\n", d.Id)
+		} else {
+			vus.latestAvailable = availableVersionStrings[len(availableVersionStrings)-1]
+			vus.target = vus.latestAvailable
+			if vus.UpgradeRequired() {
+				fmt.Printf("%s: scheduled for upgrade from %s to %s \n", d.Id, vus.previous, vus.target)
+				allUptodate = false
+			} else {
+				fmt.Printf("%s: current version %s is already up to date. No upgrade required.\n", d.Id, vus.previous)
+			}
+		}
+	}
+	if allUptodate {
+		fmt.Println("all dependencies are up to date. Nothing to do.")
+		return nil
+	}
+
+	//3. create & build service with just that brick
+	parentDir, err := ioutil.TempDir("", "sapper_upgrade_*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(parentDir)
+
+	fmt.Printf("creating temp service...")
+	service, err := b.ServiceApi.Add(brickId, parentDir, utils.DummyParameterResolver{})
+	if err != nil {
+		fmt.Printf("failed\n")
+		return err
+	}
+	fmt.Printf("success\n")
+
+	fmt.Printf("building service...")
+	buildLogFilename, err := b.ServiceApi.Build(service.Path)
+	if err != nil {
+		fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+		return err
+	} else {
+		fmt.Printf("success\n")
+	}
+
+	//4. do the upgrade
+	upgradeMap := map[string]VersionUpgradeSpec{}
+	for _, d := range dependencies {
+		fmt.Printf("%s: ", d.Id)
+		vus, err := b.ServiceApi.upgradeDependency(service, d, false)
+		if err == nil {
+			upgradeMap[d.Id] = vus
+		} else {
+			fmt.Printf("failed (%v)\n", err)
+		}
+	}
+
+	//5. write out the new package dependencies
+	pd := []ports.PackageDependency{}
+	for dependency, vus := range upgradeMap {
+		if vus.UpgradeRequired() && !vus.UpgradeCompletelyFailed() {
+			pd = append(pd, ports.PackageDependency{Id: dependency, Version: vus.latestWorking})
+		}
+	}
+	err = b.PackageDependencyWriter.WriteToBrick(brick, pd, isInDependencySection)
+	if err != nil {
+		return err
+	}
+
+	//6. print status
+	for dependency, vus := range upgradeMap {
+		pd := ports.PackageDependency{Id: dependency, Version: vus.previous}
+		vus.PrintStatus(os.Stdout, pd)
+	}
+
 	return nil
 }
 

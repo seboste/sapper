@@ -142,3 +142,27 @@ func Test_readTag(t *testing.T) {
 		})
 	}
 }
+
+func Test_getCurrentSection(t *testing.T) {
+	type args struct {
+		line    string
+		section string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{name: "entering section", args: args{line: "<<<SAPPER SECTION BEGIN new>>>", section: ""}, want: "new"},
+		{name: "inside section", args: args{line: "bla bla", section: "current"}, want: "current"},
+		{name: "leaving section", args: args{line: "<<<SAPPER SECTION END current>>>", section: "current"}, want: ""},
+		{name: "nested section", args: args{line: "<<<SAPPER SECTION BEGIN new>>>", section: "current"}, want: "current"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getCurrentSection(tt.args.line, tt.args.section); got != tt.want {
+				t.Errorf("getCurrentSection() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

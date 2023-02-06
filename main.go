@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/seboste/sapper/adapters"
 	"github.com/seboste/sapper/cmd"
@@ -15,8 +16,27 @@ func main() {
 		fmt.Println(err)
 	}
 
-	servicePersistence := adapters.FileSystemServicePersistence{}
+	dependencyManager := adapters.ConanDependencyManager{}
+	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
+	ServiceBuilder := adapters.CMakeService{}
 
-	cmd.SetApis(core.BrickApi{Db: brickDb, ServicePersistence: servicePersistence}, core.ServiceApi{Db: brickDb, ServicePersistence: servicePersistence}, core.RemoteApi{})
+	serviceApi := core.ServiceApi{
+		Db:                 brickDb,
+		ServicePersistence: servicePersistence,
+		ServiceBuilder:     ServiceBuilder,
+		DependencyInfo:     dependencyManager,
+		DependencyWriter:   dependencyManager,
+		Stdout:             os.Stdout,
+		Stderr:             os.Stderr,
+	}
+
+	brickApi := core.BrickApi{Db: brickDb,
+		PackageDependencyReader: dependencyManager,
+		PackageDependencyWriter: dependencyManager,
+		DependencyInfo:          dependencyManager,
+		ServicePersistence:      servicePersistence,
+		ServiceApi:              serviceApi,
+	}
+	cmd.SetApis(brickApi, serviceApi, core.RemoteApi{})
 	cmd.Execute()
 }

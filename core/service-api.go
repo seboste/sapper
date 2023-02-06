@@ -4,19 +4,26 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
+	"github.com/seboste/sapper/utils"
 )
 
 type ServiceApi struct {
 	Db                 ports.BrickDB
 	ServicePersistence ports.ServicePersistence
+	ServiceBuilder     ports.ServiceBuilder
 	ParameterResolver  ports.ParameterResolver
+	DependencyInfo     ports.DependencyInfo
+	DependencyWriter   ports.ServicePackageDependencyWriter
+	Stdout             io.Writer
+	Stderr             io.Writer
 }
 
 func ResolveParameters(bp []ports.BrickParameters, pr ports.ParameterResolver) (map[string]string, error) {
@@ -205,7 +212,6 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 		return bricks, fmt.Errorf("invalid brick %s", brickId)
 	}
 
-	bricks = append(bricks, brick)
 	brickIds[brick.Id] = true
 
 	//deep copy to identify cyclic dependencies
@@ -228,67 +234,271 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 		}
 	}
 
+	bricks = append(bricks, brick)
+
 	return bricks, nil
 }
 
-func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) error {
+func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) (ports.Service, error) {
+	service := ports.Service{}
 
 	bricks, err := GetBricksRecursive(templateName, s.Db, map[string]bool{})
 	if err != nil {
-		return err
+		return service, err
 	}
 
 	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
 	if err != nil {
-		return err
+		return service, err
 	}
 
 	if len(bricks) == 0 {
-		return fmt.Errorf("invalid template %s", templateName)
+		return service, fmt.Errorf("invalid template %s", templateName)
 	}
 
-	serviceName := parameters["NAME"]
-	if serviceName == "" {
-		return fmt.Errorf("invalid service name %s", serviceName)
+	service.Id = parameters["NAME"]
+	if service.Id == "" {
+		return service, fmt.Errorf("invalid service name %s", service.Id)
 	}
-	outputBasePath := filepath.Join(parentDir, serviceName)
-	if err := os.MkdirAll(outputBasePath, os.ModePerm); err != nil {
-		return err
+	service.Path = filepath.Join(parentDir, service.Id)
+	if err := os.MkdirAll(service.Path, os.ModePerm); err != nil {
+		return service, err
 	}
-
-	service := ports.Service{Id: serviceName, Path: outputBasePath}
 
 	for _, brick := range bricks {
 		if err := AddSingleBrick(&service, brick, parameters); err != nil {
-			return err
+			return service, err
 		}
 	}
 
 	if err := s.ServicePersistence.Save(service); err != nil {
+		return service, err
+	}
+	return service, err
+}
+
+func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.PackageDependency, targetVersion string) (string, error) {
+	err := s.DependencyWriter.WriteToService(service, ports.PackageDependency{Id: d.Id, Version: targetVersion})
+	if err != nil {
+		return "", err
+	}
+	buildLogFileName, err := s.Build(service.Path)
+	if err != nil {
+		return buildLogFileName, err
+	}
+
+	return buildLogFileName, nil
+}
+
+// sortedVersions must range from current version to latest version to be considered (must at least have one entry)
+// isWorkinbg is a predicate that checks if a specific version is working
+// returns latest working version
+func findLatestWorkingVersion(sortedVersions []SemanticVersion, isWorking func(v SemanticVersion) bool) SemanticVersion {
+
+	latestWorkingVersion := sortedVersions[0]
+	sortedVersions = sortedVersions[1:]
+
+	i := len(sortedVersions) - 1
+	for len(sortedVersions) >= 1 {
+		if isWorking(sortedVersions[i]) {
+			//this works => exclude all that are lower than current version
+			latestWorkingVersion = sortedVersions[i]
+			sortedVersions = sortedVersions[i+1:]
+		} else {
+			//this version does not work => exclude all that are higher or equal to the current version
+			sortedVersions = sortedVersions[:i]
+		}
+		i = len(sortedVersions) / 2
+	}
+
+	return latestWorkingVersion
+}
+
+func filterSemvers(in []SemanticVersion, predicate func(SemanticVersion) bool) []SemanticVersion {
+	out := []SemanticVersion{}
+	for _, v := range in {
+		if predicate(v) {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDependency, keepMajorVersion bool) (VersionUpgradeSpec, error) {
+	vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version} //assume that the current version is working
+
+	//1. determine all available versions
+	availableVersionStrings, err := s.DependencyInfo.AvailableVersions(d.Id)
+	if err != nil {
+		return vus, err
+	}
+	if len(availableVersionStrings) == 0 {
+		return vus, fmt.Errorf("unable to find any versions of %s", d.Id)
+	}
+	vus.latestAvailable = availableVersionStrings[len(availableVersionStrings)-1]
+
+	//2. check if we can use semantic versions
+	semvers := []SemanticVersion{}
+	currentSemver, err := ParseSemanticVersion(vus.previous)
+	if err == nil {
+		semvers, err = ConvertToSemVer(availableVersionStrings)
+	}
+
+	if err == nil {
+		//yes => use semantic versions
+
+		//a) sort versions
+		sort.Sort(ByVersion(semvers))
+		vus.latestAvailable = semvers[len(semvers)-1].String()
+
+		//a) exclude all old versions
+		semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return !Less(v, currentSemver) })
+		//b) if wanted, exclude all versions with a different major version
+		if keepMajorVersion {
+			semvers = filterSemvers(semvers, func(v SemanticVersion) bool { return currentSemver.Major == v.Major })
+		}
+
+		if len(semvers) == 0 { //this should not happen because the current version should always be included
+			vus.target = vus.previous
+			return vus, fmt.Errorf("unable to find any versions of %s that can be considered", d.Id)
+		}
+
+		//early exit?
+		vus.target = semvers[len(semvers)-1].String()
+		if vus.previous == vus.target {
+			return vus, nil
+		}
+
+		vus.latestWorking = findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
+			fmt.Fprintf(s.Stdout, "trying to upgrade to %v...", v)
+			buildLogFilename, err := s.upgradeDependencyToVersion(service, d, v.String())
+			if err == nil {
+				fmt.Fprintf(s.Stdout, "success\n")
+				return true
+			} else {
+				fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
+				return false
+			}
+		}).String()
+	} else {
+		//no => no semantic versioning, just upgrade to the latest
+		vus.target = vus.latestAvailable
+		if vus.previous == vus.target {
+			return vus, nil
+		}
+
+		fmt.Fprintf(s.Stdout, "%s => simply trying to upgrade to the latest version %s...", err.Error(), vus.target)
+		buildLogFilename, err := s.upgradeDependencyToVersion(service, d, vus.target)
+		if err == nil {
+			vus.latestWorking = vus.target
+			fmt.Fprintf(s.Stdout, "success\n")
+		} else {
+			fmt.Fprintf(s.Stdout, "failed (see %s for details)", buildLogFilename)
+		}
+	}
+
+	//4. set the latest working version
+	err = s.DependencyWriter.WriteToService(service, ports.PackageDependency{Id: d.Id, Version: vus.latestWorking})
+	if err != nil {
+		return vus, err
+	}
+
+	return vus, nil
+}
+
+func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
 		return err
 	}
+
+	fmt.Fprintf(s.Stdout, "building service...")
+	buildLogFilename, err := s.Build(path)
+	if err != nil {
+		fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
+		return err
+	} else {
+		fmt.Fprintln(s.Stdout, "success")
+	}
+
+	hasError := false
+	for _, d := range service.Dependencies {
+		fmt.Fprintf(s.Stdout, "upgrading %s (current version %s)\n", d.Id, d.Version)
+		vus, err := s.upgradeDependency(service, d, keepMajorVersion)
+		if err != nil {
+			fmt.Fprintln(s.Stdout, err.Error())
+			hasError = true
+		} else {
+			vus.PrintStatus(s.Stdout, d)
+		}
+	}
+
+	if hasError == true {
+		return fmt.Errorf("Unable to upgrade all dependencies")
+	}
+
+	fmt.Fprintln(s.Stdout, "all dependencies are up to date")
 	return nil
 }
 
-func (s ServiceApi) Update() {
-	fmt.Println("update")
-}
+func (s ServiceApi) Build(path string) (string, error) {
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return "", err
+	}
 
-func (s ServiceApi) Build(path string) error {
-	cmd := exec.Command("make", "build", "-B")
-	cmd.Dir = path
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	return err
+	f, err := ioutil.TempFile("", "sapper_build_log_*.log")
+	if err != nil {
+		return "", err
+	}
+
+	slw := utils.MakeSingleLineWriter(s.Stdout)
+	defer slw.Cleanup()
+
+	err = s.ServiceBuilder.Build(service, io.MultiWriter(slw, f))
+	if err != nil {
+		return f.Name(), err
+	} else {
+		os.Remove(f.Name())
+		return "", nil
+	}
+
 }
 
 func (s ServiceApi) Test() {
-	fmt.Println("test")
+	fmt.Fprintln(s.Stdout, "test")
+}
+
+func (s ServiceApi) Describe(path string, writer io.Writer) error {
+
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
+
+	writer.Write([]byte(fmt.Sprintln("Id:", service.Id)))
+	writer.Write([]byte(fmt.Sprintln("Path:", service.Path)))
+	writer.Write([]byte(fmt.Sprintln("BrickIds:")))
+	for _, brickId := range service.BrickIds {
+		writer.Write([]byte(fmt.Sprintln("  - Id:", brickId.Id)))
+		writer.Write([]byte(fmt.Sprintln("    Version:", brickId.Version)))
+	}
+	writer.Write([]byte(fmt.Sprintln("Dependencies:")))
+	for _, dependency := range service.Dependencies {
+		writer.Write([]byte(fmt.Sprintln("  - Id:", dependency.Id)))
+		availableVersions, err := s.DependencyInfo.AvailableVersions(dependency.Id)
+		if err != nil || len(availableVersions) == 0 || availableVersions[len(availableVersions)-1] == dependency.Version {
+			writer.Write([]byte(fmt.Sprintln("    Version:", dependency.Version)))
+		} else {
+			writer.Write([]byte(fmt.Sprintln("    Version:", dependency.Version, ", newer version", availableVersions[len(availableVersions)-1], "available")))
+		}
+	}
+
+	return nil
 }
 
 func (s ServiceApi) Deploy() {
-	fmt.Println("deploy")
+	fmt.Fprintln(s.Stdout, "deploy")
 }
 
 var _ ports.ServiceApi = ServiceApi{}
