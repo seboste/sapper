@@ -516,8 +516,8 @@ type upgradeDependencyMock struct {
 	VersionMap          map[string]string               //dependency->version
 }
 
-func (udm upgradeDependencyMock) WriteToService(s ports.Service, dependency string, version string) error {
-	udm.VersionMap[dependency] = version
+func (udm upgradeDependencyMock) WriteToService(s ports.Service, d ports.PackageDependency) error {
+	udm.VersionMap[d.Id] = d.Version
 	return nil
 }
 

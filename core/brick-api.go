@@ -13,9 +13,9 @@ import (
 type BrickApi struct {
 	Db                      ports.BrickDB
 	ServicePersistence      ports.ServicePersistence
-	PackageDependencyReader ports.PackageDependencyReader
+	PackageDependencyReader ports.BrickPackageDependencyReader
 	DependencyInfo          ports.DependencyInfo
-	ServiceApi              ports.ServiceApi
+	ServiceApi              ServiceApi
 }
 
 func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency) []ports.Brick {
@@ -129,6 +129,22 @@ func (b BrickApi) Upgrade(brickId string) error {
 		return err
 	} else {
 		fmt.Printf("success\n")
+	}
+
+	upgradeMap := map[string]VersionUpgradeSpec{}
+	for _, d := range dependencies {
+		fmt.Printf("%s: ", d.Id)
+		vus, err := b.ServiceApi.upgradeDependency(service, d, false)
+		if err == nil {
+			upgradeMap[d.Id] = vus
+		} else {
+			fmt.Printf("failed (%v)\n", err)
+		}
+	}
+
+	for dependency, vus := range upgradeMap {
+		//b.PackageDependencyWriter.
+		vus.PrintStatus(os.Stdout, ports.PackageDependency{Id: dependency, Version: vus.previous})
 	}
 
 	return nil

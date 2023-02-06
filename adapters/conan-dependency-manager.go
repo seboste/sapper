@@ -76,7 +76,7 @@ func isInConanRequiresSection(line string, state string) (bool, string) {
 	return section == "requires", state
 }
 
-func processLines(r io.Reader, op func(line string, isActive bool), p ports.PacakgeDependencySectionPredicate) {
+func processLines(r io.Reader, op func(line string, isActive bool), p ports.PackageDependencySectionPredicate) {
 	scanner := bufio.NewScanner(r)
 	state := ""
 	for scanner.Scan() {
@@ -87,7 +87,7 @@ func processLines(r io.Reader, op func(line string, isActive bool), p ports.Paca
 	}
 }
 
-func readDependenciesFromConanfile(path string, p ports.PacakgeDependencySectionPredicate) ([]ports.PackageDependency, error) {
+func readDependenciesFromConanfile(path string, p ports.PackageDependencySectionPredicate) ([]ports.PackageDependency, error) {
 	dependencies := []ports.PackageDependency{}
 
 	conanFilePath := filepath.Join(path, "conanfile.txt")
@@ -112,11 +112,11 @@ func (cdm ConanDependencyManager) ReadFromService(s ports.Service) ([]ports.Pack
 	return readDependenciesFromConanfile(s.Path, isInConanRequiresSection)
 }
 
-func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick, p ports.PacakgeDependencySectionPredicate) ([]ports.PackageDependency, error) {
+func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick, p ports.PackageDependencySectionPredicate) ([]ports.PackageDependency, error) {
 	return readDependenciesFromConanfile(b.BasePath, p)
 }
 
-func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency string, version string) error {
+func (cdm ConanDependencyManager) WriteToService(s ports.Service, d ports.PackageDependency) error {
 
 	conanfilePath := filepath.Join(s.Path, "conanfile.txt")
 	content, err := ioutil.ReadFile(conanfilePath)
@@ -129,8 +129,8 @@ func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency str
 	processLines(strings.NewReader(string(content)), func(line string, isActive bool) {
 		if isActive {
 			dep, err := parseConanDependency(line)
-			if err == nil && dep.Id == dependency {
-				dep.Version = version
+			if err == nil && dep.Id == d.Id {
+				dep.Version = d.Version
 				line = replaceConanDependency(line, dep)
 				replaceCount = replaceCount + 1
 			}
@@ -139,7 +139,7 @@ func (cdm ConanDependencyManager) WriteToService(s ports.Service, dependency str
 		outputContent = outputContent + fmt.Sprintln(line)
 	}, isInConanRequiresSection)
 	if replaceCount != 1 {
-		return fmt.Errorf("unable to set version %s of package %s", version, dependency)
+		return fmt.Errorf("unable to set version %s of package %s", d.Version, d.Id)
 	}
 	if err := ioutil.WriteFile(conanfilePath, []byte(outputContent), 0644); err != nil {
 		return err
@@ -169,6 +169,9 @@ func (cdm ConanDependencyManager) AvailableVersions(dependency string) ([]string
 	return versions, err
 }
 
-var _ ports.PackageDependencyReader = ConanDependencyManager{}
-var _ ports.PackageDependencyWriter = ConanDependencyManager{}
+var _ ports.BrickPackageDependencyReader = ConanDependencyManager{}
+var _ ports.ServicePackageDependencyReader = ConanDependencyManager{}
+
+// var _ ports.BrickPackageDependencyWriter = ConanDependencyManager{}
+var _ ports.ServicePackageDependencyWriter = ConanDependencyManager{}
 var _ ports.DependencyInfo = ConanDependencyManager{}

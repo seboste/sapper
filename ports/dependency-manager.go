@@ -5,15 +5,22 @@ type PackageDependency struct {
 	Version string
 }
 
-type PacakgeDependencySectionPredicate func(line string, state string) (isActive bool, newState string)
+type PackageDependencySectionPredicate func(line string, state string) (isActive bool, newState string)
 
-type PackageDependencyReader interface {
+type ServicePackageDependencyReader interface {
 	ReadFromService(s Service) ([]PackageDependency, error)
-	ReadFromBrick(b Brick, p PacakgeDependencySectionPredicate) ([]PackageDependency, error)
 }
 
-type PackageDependencyWriter interface {
-	WriteToService(s Service, dependency string, version string) error
+type BrickPackageDependencyReader interface {
+	ReadFromBrick(b Brick, p PackageDependencySectionPredicate) ([]PackageDependency, error)
+}
+
+type ServicePackageDependencyWriter interface {
+	WriteToService(s Service, d PackageDependency) error
+}
+
+type BrickPackageDependencyWriter interface {
+	WriteToBrick(b Brick, d PackageDependency, p PackageDependencySectionPredicate) error
 }
 
 type DependencyInfo interface {

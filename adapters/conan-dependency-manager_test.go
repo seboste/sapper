@@ -212,7 +212,7 @@ lib/v2
 			}
 
 			//2. execute test
-			if err := cdm.WriteToService(tt.args.s, tt.args.dependency, tt.args.version); (err != nil) != tt.wantErr {
+			if err := cdm.WriteToService(tt.args.s, ports.PackageDependency{Id: tt.args.dependency, Version: tt.args.version}); (err != nil) != tt.wantErr {
 				t.Errorf("ConanDependencyManager.Write() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
