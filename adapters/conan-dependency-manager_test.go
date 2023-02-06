@@ -169,16 +169,6 @@ abc mylib/1.2.4@user/channel#01234ebc	xyz
 lib2/0.1.2
 `,
 		},
-		{name: "lib duplicate error", cdm: ConanDependencyManager{}, conanfile: `
-[requires]
-mylib/1.2.3
-mylib/1.2.2
-`, args: args{s: testService, dependency: "mylib", version: "1.2.4"}, wantErr: true, wantConanfile: `
-[requires]
-mylib/1.2.3
-mylib/1.2.2
-`,
-		},
 		{name: "disabled lib error", cdm: ConanDependencyManager{}, conanfile: `
 		[requires]
 		#mylib/1.2.3

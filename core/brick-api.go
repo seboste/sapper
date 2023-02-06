@@ -14,6 +14,7 @@ type BrickApi struct {
 	Db                      ports.BrickDB
 	ServicePersistence      ports.ServicePersistence
 	PackageDependencyReader ports.BrickPackageDependencyReader
+	PackageDependencyWriter ports.BrickPackageDependencyWriter
 	DependencyInfo          ports.DependencyInfo
 	ServiceApi              ServiceApi
 }
@@ -68,21 +69,23 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 	return nil
 }
 
+func isInDependencySection(line string, state string) (bool, string) {
+	state = getCurrentSection(line, state)
+	return state == "CONAN-DEPENDENCIES", state
+}
+
 func (b BrickApi) Upgrade(brickId string) error {
+	//1. read package dependencies from brick
 	brick, err := b.Db.Brick(brickId)
 	if err != nil {
 		return err
 	}
-
-	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick, func(line string, state string) (bool, string) {
-		state = getCurrentSection(line, state)
-		return state == "CONAN-DEPENDENCIES", state
-	})
-
+	dependencies, err := b.PackageDependencyReader.ReadFromBrick(brick, isInDependencySection)
 	if err != nil {
 		return err
 	}
 
+	//2. check if update is required
 	allUptodate := true
 	for _, d := range dependencies {
 		vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version}
@@ -98,16 +101,16 @@ func (b BrickApi) Upgrade(brickId string) error {
 				fmt.Printf("%s: scheduled for upgrade from %s to %s \n", d.Id, vus.previous, vus.target)
 				allUptodate = false
 			} else {
-				fmt.Printf("%s: current version %s is already now up to date. No upgrade required.\n", d.Id, vus.previous)
+				fmt.Printf("%s: current version %s is already up to date. No upgrade required.\n", d.Id, vus.previous)
 			}
 		}
 	}
-
 	if allUptodate {
 		fmt.Println("all dependencies are up to date. Nothing to do.")
 		return nil
 	}
 
+	//3. create & build service with just that brick
 	parentDir, err := ioutil.TempDir("", "sapper_upgrade_*")
 	if err != nil {
 		return err
@@ -131,6 +134,7 @@ func (b BrickApi) Upgrade(brickId string) error {
 		fmt.Printf("success\n")
 	}
 
+	//4. do the upgrade
 	upgradeMap := map[string]VersionUpgradeSpec{}
 	for _, d := range dependencies {
 		fmt.Printf("%s: ", d.Id)
@@ -142,9 +146,22 @@ func (b BrickApi) Upgrade(brickId string) error {
 		}
 	}
 
+	//5. write out the new package dependencies
+	pd := []ports.PackageDependency{}
 	for dependency, vus := range upgradeMap {
-		//b.PackageDependencyWriter.
-		vus.PrintStatus(os.Stdout, ports.PackageDependency{Id: dependency, Version: vus.previous})
+		if vus.UpgradeRequired() && !vus.UpgradeCompletelyFailed() {
+			pd = append(pd, ports.PackageDependency{Id: dependency, Version: vus.latestWorking})
+		}
+	}
+	err = b.PackageDependencyWriter.WriteToBrick(brick, pd, isInDependencySection)
+	if err != nil {
+		return err
+	}
+
+	//6. print status
+	for dependency, vus := range upgradeMap {
+		pd := ports.PackageDependency{Id: dependency, Version: vus.previous}
+		vus.PrintStatus(os.Stdout, pd)
 	}
 
 	return nil

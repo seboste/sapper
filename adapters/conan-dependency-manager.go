@@ -116,36 +116,50 @@ func (cdm ConanDependencyManager) ReadFromBrick(b ports.Brick, p ports.PackageDe
 	return readDependenciesFromConanfile(b.BasePath, p)
 }
 
-func (cdm ConanDependencyManager) WriteToService(s ports.Service, d ports.PackageDependency) error {
+func writeDependenciesToConanfile(path string, dependencies []ports.PackageDependency, p ports.PackageDependencySectionPredicate) error {
 
-	conanfilePath := filepath.Join(s.Path, "conanfile.txt")
+	dependencyMap := map[string]string{}
+	for _, d := range dependencies {
+		dependencyMap[d.Id] = d.Version
+	}
+
+	conanfilePath := filepath.Join(path, "conanfile.txt")
 	content, err := ioutil.ReadFile(conanfilePath)
 	if err != nil {
 		return err
 	}
 
 	var outputContent string
-	replaceCount := 0
 	processLines(strings.NewReader(string(content)), func(line string, isActive bool) {
 		if isActive {
 			dep, err := parseConanDependency(line)
-			if err == nil && dep.Id == d.Id {
-				dep.Version = d.Version
+			newVersion, ok := dependencyMap[dep.Id]
+			if err == nil && ok {
+				dep.Version = newVersion
 				line = replaceConanDependency(line, dep)
-				replaceCount = replaceCount + 1
+				delete(dependencyMap, dep.Id)
 			}
 		}
 
 		outputContent = outputContent + fmt.Sprintln(line)
-	}, isInConanRequiresSection)
-	if replaceCount != 1 {
-		return fmt.Errorf("unable to set version %s of package %s", d.Version, d.Id)
+	}, p)
+	if len(dependencyMap) > 0 {
+		return fmt.Errorf("unable to write all dependencies")
 	}
 	if err := ioutil.WriteFile(conanfilePath, []byte(outputContent), 0644); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (cdm ConanDependencyManager) WriteToService(s ports.Service, d ports.PackageDependency) error {
+	return writeDependenciesToConanfile(s.Path, []ports.PackageDependency{d}, isInConanRequiresSection)
+
+}
+
+func (cdm ConanDependencyManager) WriteToBrick(b ports.Brick, d []ports.PackageDependency, p ports.PackageDependencySectionPredicate) error {
+	return writeDependenciesToConanfile(b.BasePath, d, p)
 }
 
 func (cdm ConanDependencyManager) AvailableVersions(dependency string) ([]string, error) {
@@ -171,7 +185,6 @@ func (cdm ConanDependencyManager) AvailableVersions(dependency string) ([]string
 
 var _ ports.BrickPackageDependencyReader = ConanDependencyManager{}
 var _ ports.ServicePackageDependencyReader = ConanDependencyManager{}
-
-// var _ ports.BrickPackageDependencyWriter = ConanDependencyManager{}
+var _ ports.BrickPackageDependencyWriter = ConanDependencyManager{}
 var _ ports.ServicePackageDependencyWriter = ConanDependencyManager{}
 var _ ports.DependencyInfo = ConanDependencyManager{}

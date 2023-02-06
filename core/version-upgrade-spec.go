@@ -29,7 +29,7 @@ func (vus VersionUpgradeSpec) UpgradeCompletelyFailed() bool {
 
 func (vus VersionUpgradeSpec) PrintStatus(w io.Writer, d ports.PackageDependency) {
 	if !vus.UpgradeRequired() {
-		fmt.Fprintf(w, "%s is already now up to date. No upgrade required.\n", d.Id)
+		fmt.Fprintf(w, "%s is already up to date. No upgrade required.\n", d.Id)
 	} else if vus.UpgradeToLatestSuccessful() {
 		fmt.Fprintf(w, "upgrade from %s to %s succeeded. %s is now up to date.\n", vus.previous, vus.latestAvailable, d.Id)
 	} else if vus.UpgradeToTargetSuccessful() {

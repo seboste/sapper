@@ -32,6 +32,7 @@ func main() {
 
 	brickApi := core.BrickApi{Db: brickDb,
 		PackageDependencyReader: dependencyManager,
+		PackageDependencyWriter: dependencyManager,
 		DependencyInfo:          dependencyManager,
 		ServicePersistence:      servicePersistence,
 		ServiceApi:              serviceApi,

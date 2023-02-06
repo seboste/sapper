@@ -20,7 +20,7 @@ type ServicePackageDependencyWriter interface {
 }
 
 type BrickPackageDependencyWriter interface {
-	WriteToBrick(b Brick, d PackageDependency, p PackageDependencySectionPredicate) error
+	WriteToBrick(b Brick, d []PackageDependency, p PackageDependencySectionPredicate) error
 }
 
 type DependencyInfo interface {
