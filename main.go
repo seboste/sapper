@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/seboste/sapper/adapters"
@@ -10,18 +9,29 @@ import (
 )
 
 func main() {
-	brickDb := &adapters.FilesystemBrickDB{}
-	err := brickDb.Init("./remote")
+	// brickDb := &adapters.FilesystemBrickDB{}
+	// err := brickDb.Init("./remote")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	homedir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
+	fsc, err := adapters.MakeFilesystemConfiguration(homedir)
+	if err != nil {
+		panic(err)
+	}
+
+	brickDB := adapters.MakeAggregateBrickDB(fsc.Remotes())
 
 	dependencyManager := adapters.ConanDependencyManager{}
 	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
 	ServiceBuilder := adapters.CMakeService{}
 
 	serviceApi := core.ServiceApi{
-		Db:                 brickDb,
+		Db:                 brickDB,
 		ServicePersistence: servicePersistence,
 		ServiceBuilder:     ServiceBuilder,
 		DependencyInfo:     dependencyManager,
@@ -30,7 +40,7 @@ func main() {
 		Stderr:             os.Stderr,
 	}
 
-	brickApi := core.BrickApi{Db: brickDb,
+	brickApi := core.BrickApi{Db: brickDB,
 		PackageDependencyReader: dependencyManager,
 		PackageDependencyWriter: dependencyManager,
 		DependencyInfo:          dependencyManager,
