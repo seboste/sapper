@@ -17,7 +17,8 @@ type FileSystemConfiguration struct {
 
 var defaultRemote ports.Remote = ports.Remote{
 	Name: "sapper-bricks",
-	Path: "./remote",
+	Kind: ports.GitRemote,
+	Src:  "https://github.com/seboste/sapper-bricks.git",
 }
 
 var defaultConfiguration FileSystemConfiguration
@@ -64,6 +65,11 @@ func (fsc FileSystemConfiguration) Save() error {
 	if err := os.MkdirAll(fsc.Path, os.ModePerm); err != nil {
 		return err
 	}
+
+	if err := os.MkdirAll(fsc.DefaultRemotesDir(), os.ModePerm); err != nil {
+		return err
+	}
+
 	yamlData, err := yaml.Marshal(fsc)
 	if err != nil {
 		return err

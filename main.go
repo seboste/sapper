@@ -15,7 +15,7 @@ func main() {
 		panic(err)
 	}
 
-	brickDB, err := adapters.MakeBrickDB(fsc.Remotes())
+	brickDB, err := adapters.MakeBrickDB(fsc.Remotes(), fsc.DefaultRemotesDir())
 	if err != nil {
 		panic(err)
 	}

@@ -30,7 +30,7 @@ func TestFileSystemConfiguration_Load(t *testing.T) {
     - name: some-remote
       path: some-path
 `, Rmts: []ports.Remote{}},
-			wantConfig: FileSystemConfiguration{Path: tempDir, Rmts: []ports.Remote{{Name: "some-remote", Path: "some-path"}}},
+			wantConfig: FileSystemConfiguration{Path: tempDir, Rmts: []ports.Remote{{Name: "some-remote", Src: "some-path"}}},
 			wantErr:    func(err error) bool { return err == nil }},
 		{name: "invalid yaml syntax", fields: fields{Path: tempDir, Yaml: `Remotes:
     - name: some-remote
@@ -133,7 +133,7 @@ func TestFileSystemConfiguration_Save(t *testing.T) {
 	}{
 		{name: "config without remotes", fields: fields{Path: filepath.Join(tempDir, "test1")}, wantErr: false, wantYaml: `Remotes: []
 `},
-		{name: "config with remotes", fields: fields{Path: filepath.Join(tempDir, "test2"), Rmts: []ports.Remote{{Name: "some-remote", Path: "some-path"}}}, wantErr: false, wantYaml: `Remotes:
+		{name: "config with remotes", fields: fields{Path: filepath.Join(tempDir, "test2"), Rmts: []ports.Remote{{Name: "some-remote", Src: "some-path"}}}, wantErr: false, wantYaml: `Remotes:
     - name: some-remote
       path: some-path
 `},
@@ -158,7 +158,7 @@ func TestFileSystemConfiguration_Save(t *testing.T) {
 
 func TestMakeFilesystemConfiguration(t *testing.T) {
 
-	testConfig := FileSystemConfiguration{Rmts: []ports.Remote{{Name: "some-remote", Path: "some-path"}}}
+	testConfig := FileSystemConfiguration{Rmts: []ports.Remote{{Name: "some-remote", Src: "some-path"}}}
 
 	tests := []struct {
 		name          string

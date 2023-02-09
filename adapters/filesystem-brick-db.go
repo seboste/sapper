@@ -50,7 +50,8 @@ type FilesystemBrickDB struct {
 	bricks []ports.Brick
 }
 
-func (db *FilesystemBrickDB) Init(basePath string) error {
+func MakeFilesystemBrickDB(basePath string) (FilesystemBrickDB, error) {
+	db := FilesystemBrickDB{}
 	err := filepath.Walk(basePath,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -70,7 +71,7 @@ func (db *FilesystemBrickDB) Init(basePath string) error {
 
 			return nil
 		})
-	return err
+	return db, err
 }
 
 func (db *FilesystemBrickDB) Bricks(kind ports.BrickKind) []ports.Brick {
