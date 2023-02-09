@@ -3,22 +3,38 @@ package adapters
 import "github.com/seboste/sapper/ports"
 
 type AggregateBrickDB struct {
+	dbs []ports.BrickDB
 }
 
-func MakeAggregateBrickDB(remotes []ports.Remote) *AggregateBrickDB {
-	return &AggregateBrickDB{}
+func contains(bricks []ports.Brick, b ports.Brick) bool {
+	for _, brick := range bricks {
+		if brick.Id == b.Id {
+			return true
+		}
+	}
+	return false
 }
 
-func (abdb AggregateBrickDB) Init(Path string) error {
-	return nil
-}
-
-func (abdb AggregateBrickDB) Bricks(kind ports.BrickKind) []ports.Brick {
-	return []ports.Brick{}
+func (abdb AggregateBrickDB) Bricks(k ports.BrickKind) []ports.Brick {
+	bricks := []ports.Brick{}
+	for _, db := range abdb.dbs {
+		for _, b := range db.Bricks(k) {
+			if !contains(bricks, b) {
+				bricks = append(bricks, b)
+			}
+		}
+	}
+	return bricks
 }
 
 func (abdb AggregateBrickDB) Brick(id string) (ports.Brick, error) {
-	return ports.Brick{}, nil
+	for _, db := range abdb.dbs {
+		brick, err := db.Brick(id)
+		if err == nil {
+			return brick, nil
+		}
+	}
+	return ports.Brick{}, ports.BrickNotFound
 }
 
 var _ ports.BrickDB = AggregateBrickDB{}
