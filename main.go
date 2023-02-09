@@ -9,22 +9,16 @@ import (
 )
 
 func main() {
-	// brickDb := &adapters.FilesystemBrickDB{}
-	// err := brickDb.Init("./remote")
-	// if err != nil {
-	// 	panic(err)
-	// }
 
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	fsc, err := adapters.MakeFilesystemConfiguration(homedir)
+	fsc, err := adapters.MakeFilesystemConfiguration()
 	if err != nil {
 		panic(err)
 	}
 
-	brickDB := adapters.MakeAggregateBrickDB(fsc.Remotes())
+	brickDB, err := adapters.MakeBrickDB(fsc.Remotes())
+	if err != nil {
+		panic(err)
+	}
 
 	dependencyManager := adapters.ConanDependencyManager{}
 	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
