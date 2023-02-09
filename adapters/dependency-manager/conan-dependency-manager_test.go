@@ -1,4 +1,4 @@
-package adapters
+package dependencyManager
 
 import (
 	"io/ioutil"

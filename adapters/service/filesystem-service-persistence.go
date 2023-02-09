@@ -1,4 +1,4 @@
-package adapters
+package service
 
 import (
 	"io/ioutil"

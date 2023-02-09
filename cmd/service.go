@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/seboste/sapper/adapters"
+	parameterResolver "github.com/seboste/sapper/adapters/parameter-resolver"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ var addServiceCmd = &cobra.Command{
 		path, name := filepath.Split(args[0])
 		template, _ := cmd.Flags().GetString("template")
 
-		r, err := adapters.MakeSapperParameterResolver(cmd.Flags(), name)
+		r, err := parameterResolver.MakeSapperParameterResolver(cmd.Flags(), name)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -117,7 +117,7 @@ func init() {
 	rootCmd.AddCommand(serviceCmd)
 
 	addServiceCmd.PersistentFlags().StringP("template", "t", "base-hexagonal-skeleton", "The id of a service template.")
-	adapters.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
+	parameterResolver.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
 
 	keepMajorVersion = upgradeServiceCmd.PersistentFlags().Bool("keep-major", false, "Upgrades are only conducted within the same major version of a dependency's semantic version")
 

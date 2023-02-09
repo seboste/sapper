@@ -1,4 +1,4 @@
-package adapters
+package brickDb
 
 import (
 	"path/filepath"

@@ -1,4 +1,4 @@
-package adapters
+package parameterResolver
 
 import "github.com/seboste/sapper/ports"
 

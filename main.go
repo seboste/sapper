@@ -3,26 +3,29 @@ package main
 import (
 	"os"
 
-	"github.com/seboste/sapper/adapters"
+	brickDb "github.com/seboste/sapper/adapters/brick-db"
+	configuration "github.com/seboste/sapper/adapters/configuration"
+	dependencyManager "github.com/seboste/sapper/adapters/dependency-manager"
+	"github.com/seboste/sapper/adapters/service"
 	"github.com/seboste/sapper/cmd"
 	"github.com/seboste/sapper/core"
 )
 
 func main() {
 
-	fsc, err := adapters.MakeFilesystemConfiguration()
+	fsc, err := configuration.MakeFilesystemConfiguration()
 	if err != nil {
 		panic(err)
 	}
 
-	brickDB, err := adapters.MakeBrickDB(fsc.Remotes(), fsc.DefaultRemotesDir())
+	brickDB, err := brickDb.MakeBrickDB(fsc.Remotes(), fsc.DefaultRemotesDir())
 	if err != nil {
 		panic(err)
 	}
 
-	dependencyManager := adapters.ConanDependencyManager{}
-	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
-	ServiceBuilder := adapters.CMakeService{}
+	dependencyManager := dependencyManager.ConanDependencyManager{}
+	servicePersistence := service.FileSystemServicePersistence{DependencyReader: dependencyManager}
+	ServiceBuilder := service.CMakeService{}
 
 	serviceApi := core.ServiceApi{
 		Db:                 brickDB,
