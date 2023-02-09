@@ -1,7 +1,6 @@
 package adapters
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,8 +8,6 @@ import (
 	"github.com/seboste/sapper/ports"
 	"gopkg.in/yaml.v3"
 )
-
-var BrickNotFound = errors.New("brick not found")
 
 func makeBrick(path string) (ports.Brick, error) {
 	b := ports.Brick{}
@@ -92,7 +89,7 @@ func (db *FilesystemBrickDB) Brick(id string) (ports.Brick, error) {
 			return b, nil
 		}
 	}
-	return ports.Brick{}, BrickNotFound
+	return ports.Brick{}, ports.BrickNotFound
 }
 
 var _ ports.BrickDB = &FilesystemBrickDB{}

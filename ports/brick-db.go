@@ -1,11 +1,14 @@
 package ports
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+var BrickNotFound = errors.New("brick not found")
 
 type BrickParameters struct {
 	Name    string
@@ -31,7 +34,6 @@ type Brick struct {
 }
 
 type BrickDB interface {
-	Init(Path string) error
 	Bricks(kind BrickKind) []Brick
 	Brick(id string) (Brick, error)
 }
