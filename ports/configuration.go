@@ -1,7 +1,8 @@
 package ports
 
 type Configuration interface {
-	ConfigurationDir() string
+	Save() error
+	DefaultRemotesDir() string
 	Remotes() []Remote
 	UpdateRemotes(remotes []Remote) error
 }
