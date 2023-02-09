@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,13 +29,13 @@ func TestFileSystemConfiguration_Load(t *testing.T) {
 	}{
 		{name: "correct config", fields: fields{Path: tempDir, Yaml: `Remotes:
     - name: some-remote
-      path: some-path
+      src: some-path
 `, Rmts: []ports.Remote{}},
 			wantConfig: FileSystemConfiguration{Path: tempDir, Rmts: []ports.Remote{{Name: "some-remote", Src: "some-path"}}},
 			wantErr:    func(err error) bool { return err == nil }},
 		{name: "invalid yaml syntax", fields: fields{Path: tempDir, Yaml: `Remotes:
     - name: some-remote
-         path: some-path
+         src: some-path
 `, Rmts: []ports.Remote{}},
 			wantConfig: FileSystemConfiguration{Path: tempDir, Rmts: []ports.Remote{}},
 			wantErr:    func(err error) bool { return err != nil && !os.IsNotExist(err) }},
@@ -118,6 +119,11 @@ func TestFileSystemConfiguration_DefaultRemotesDir(t *testing.T) {
 }
 
 func TestFileSystemConfiguration_Save(t *testing.T) {
+
+	b := []byte{112, 97, 116, 104}
+	fmt.Println(b)
+	fmt.Println(string(b))
+
 	tempDir, _ := ioutil.TempDir("", "fscSaveTest*")
 	defer os.RemoveAll(tempDir) // clean up
 
@@ -135,7 +141,8 @@ func TestFileSystemConfiguration_Save(t *testing.T) {
 `},
 		{name: "config with remotes", fields: fields{Path: filepath.Join(tempDir, "test2"), Rmts: []ports.Remote{{Name: "some-remote", Src: "some-path"}}}, wantErr: false, wantYaml: `Remotes:
     - name: some-remote
-      path: some-path
+      kind: 0
+      src: some-path
 `},
 	}
 	for _, tt := range tests {

@@ -169,16 +169,11 @@ func TestFilesystemBrickDB_Brick(t *testing.T) {
 	}
 }
 
-func TestFilesystemBrickDB_Init(t *testing.T) {
+func TestMakeFilesystemBrickDB(t *testing.T) {
 
 	tempDir, _ := ioutil.TempDir("", "example_db")
 	defer os.RemoveAll(tempDir) // clean up
 
-	initiallyAvailableBrick := ports.Brick{Id: "initial", Kind: ports.Extension}
-
-	type fields struct {
-		bricks []ports.Brick
-	}
 	type args struct {
 		basePath string
 	}
@@ -189,15 +184,13 @@ func TestFilesystemBrickDB_Init(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   []input
-		fields  fields
 		args    args
 		wantErr bool
 		want    []ports.Brick
 	}{
 		{
-			name:   "init",
-			fields: fields{bricks: []ports.Brick{initiallyAvailableBrick}},
-			args:   args{basePath: filepath.Join(tempDir, "example_db")},
+			name: "init",
+			args: args{basePath: filepath.Join(tempDir, "example_db")},
 			input: []input{{name: "brick_1", yaml: `id : brick_1
 kind: extension
 description : test brick 1
@@ -209,7 +202,6 @@ description : test brick 2
 			},
 			wantErr: false,
 			want: []ports.Brick{
-				initiallyAvailableBrick,
 				{Id: "brick_1", Description: "test brick 1", Kind: ports.Extension, BasePath: filepath.Join(tempDir, "example_db/brick_1")},
 				{Id: "brick_2", Description: "test brick 2", Kind: ports.Extension, BasePath: filepath.Join(tempDir, "example_db/brick_2")},
 			},
@@ -225,10 +217,8 @@ description : test brick 2
 				ioutil.WriteFile(filepath.Join(brickDir, "manifest.yaml"), []byte(in.yaml), 0666)
 			}
 			//2. execute test
-			db := &FilesystemBrickDB{
-				bricks: tt.fields.bricks,
-			}
-			if err := db.Init(tt.args.basePath); (err != nil) != tt.wantErr {
+			db, err := MakeFilesystemBrickDB(tt.args.basePath)
+			if err != nil != tt.wantErr {
 				t.Errorf("FilesystemBrickDB.Init() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !reflect.DeepEqual(db.bricks, tt.want) {
