@@ -44,6 +44,9 @@ func main() {
 		ServicePersistence:      servicePersistence,
 		ServiceApi:              serviceApi,
 	}
-	cmd.SetApis(brickApi, serviceApi, core.RemoteApi{})
+
+	remoteApi := core.RemoteApi{Config: fsc}
+
+	cmd.SetApis(brickApi, serviceApi, remoteApi)
 	cmd.Execute()
 }
