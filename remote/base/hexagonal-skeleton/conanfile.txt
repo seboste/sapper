@@ -1,8 +1,0 @@
-[generators]
-cmake_find_package
-cmake_paths
-
-[requires]
-#<<<SAPPER SECTION BEGIN CONAN-DEPENDENCIES>>>
-microservice-essentials/0.0.1
-#<<<SAPPER SECTION END CONAN-DEPENDENCIES>>>
