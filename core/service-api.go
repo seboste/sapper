@@ -101,7 +101,7 @@ func AddSingleBrick(s *ports.Service, b ports.Brick, parameters map[string]strin
 		}
 	}
 
-	s.BrickIds = append(s.BrickIds, ports.BrickDependency{b.Id, b.Version})
+	s.BrickIds = append(s.BrickIds, ports.BrickDependency{Id: b.Id, Version: b.Version})
 
 	return nil
 }
