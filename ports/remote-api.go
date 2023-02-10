@@ -14,6 +14,9 @@ type Remote struct {
 }
 
 type RemoteApi interface {
-	Add()
-	List()
+	Add(name string, src string, position int) error
+	Remove(name string) error
+	Update(name string) error
+	Upgrade(name string) error
+	List() []Remote
 }
