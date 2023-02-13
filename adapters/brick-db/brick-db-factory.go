@@ -21,7 +21,15 @@ func makeBrickDB(r ports.Remote, remotesDir string) (ports.BrickDB, error) {
 	return nil, nil
 }
 
-func MakeBrickDB(remotes []ports.Remote, remotesDir string) (ports.BrickDB, error) {
+type Factory struct {
+	//Remote
+}
+
+func (f Factory) MakeBrickDB(r ports.Remote, remotesDir string) (ports.BrickDB, error) {
+	return makeBrickDB(r, remotesDir)
+}
+
+func (f Factory) MakeAggregatedBrickDB(remotes []ports.Remote, remotesDir string) (ports.BrickDB, error) {
 	abdb := AggregateBrickDB{}
 	for _, r := range remotes {
 		db, err := makeBrickDB(r, remotesDir)
@@ -32,3 +40,5 @@ func MakeBrickDB(remotes []ports.Remote, remotesDir string) (ports.BrickDB, erro
 	}
 	return abdb, nil
 }
+
+var _ ports.BrickDBFactory = Factory{}

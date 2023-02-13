@@ -33,6 +33,11 @@ type Brick struct {
 	Files        []string
 }
 
+type BrickDBFactory interface {
+	MakeBrickDB(r Remote, remotesDir string) (BrickDB, error)
+	MakeAggregatedBrickDB(r []Remote, remotesDir string) (BrickDB, error)
+}
+
 type BrickDB interface {
 	Bricks(kind BrickKind) []Brick
 	Brick(id string) (Brick, error)

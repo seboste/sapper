@@ -43,7 +43,8 @@ func Test_removeBricks(t *testing.T) {
 
 func TestBrickApi_Add(t *testing.T) {
 	type fields struct {
-		Db                 ports.BrickDB
+		BrickDBFactory     ports.BrickDBFactory
+		Configuration      ports.Configuration
 		ServicePersistence ports.ServicePersistence
 	}
 	type args struct {
@@ -62,7 +63,8 @@ func TestBrickApi_Add(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := BrickApi{
-				Db:                 tt.fields.Db,
+				BrickDBFactory:     tt.fields.BrickDBFactory,
+				Configuration:      tt.fields.Configuration,
 				ServicePersistence: tt.fields.ServicePersistence,
 			}
 			if err := b.Add(tt.args.servicePath, tt.args.brickId, tt.args.parameterResolver); (err != nil) != tt.wantErr {

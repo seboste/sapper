@@ -11,7 +11,8 @@ import (
 )
 
 type BrickApi struct {
-	Db                      ports.BrickDB
+	Configuration           ports.Configuration
+	BrickDBFactory          ports.BrickDBFactory
 	ServicePersistence      ports.ServicePersistence
 	PackageDependencyReader ports.BrickPackageDependencyReader
 	PackageDependencyWriter ports.BrickPackageDependencyWriter
@@ -35,8 +36,12 @@ func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency
 }
 
 func (b BrickApi) Add(servicePath string, brickId string, parameterResolver ports.ParameterResolver) error {
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
 
-	bricks, err := GetBricksRecursive(brickId, b.Db, map[string]bool{})
+	bricks, err := GetBricksRecursive(brickId, db, map[string]bool{})
 	if err != nil {
 		return err
 	}
@@ -76,7 +81,12 @@ func isInDependencySection(line string, state string) (bool, string) {
 
 func (b BrickApi) Upgrade(brickId string) error {
 	//1. read package dependencies from brick
-	brick, err := b.Db.Brick(brickId)
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
+
+	brick, err := db.Brick(brickId)
 	if err != nil {
 		return err
 	}
@@ -168,12 +178,22 @@ func (b BrickApi) Upgrade(brickId string) error {
 }
 
 func (b BrickApi) List() []ports.Brick {
-	return b.Db.Bricks(ports.Extension)
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return nil
+	}
+
+	return db.Bricks(ports.Extension)
 }
 
 func (b BrickApi) Search(term string) []ports.Brick {
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return nil
+	}
+
 	filteredBricks := []ports.Brick{}
-	for _, brick := range b.Db.Bricks(ports.Extension) {
+	for _, brick := range db.Bricks(ports.Extension) {
 		if strings.Contains(brick.Id, term) || strings.Contains(brick.Description, term) {
 			filteredBricks = append(filteredBricks, brick)
 		}

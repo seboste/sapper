@@ -5,7 +5,8 @@ import (
 )
 
 type RemoteApi struct {
-	Config ports.Configuration
+	Configuration  ports.Configuration
+	BrickDBFactory ports.BrickDBFactory
 }
 
 func (r RemoteApi) Add(name string, src string, position int) error {
@@ -21,7 +22,7 @@ func (r RemoteApi) Upgrade(name string) error {
 	return nil
 }
 func (r RemoteApi) List() []ports.Remote {
-	return r.Config.Remotes()
+	return r.Configuration.Remotes()
 }
 
 var _ ports.RemoteApi = RemoteApi{}

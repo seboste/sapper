@@ -13,22 +13,20 @@ import (
 
 func main() {
 
-	fsc, err := configuration.MakeFilesystemConfiguration()
+	config, err := configuration.MakeFilesystemConfiguration()
 	if err != nil {
 		panic(err)
 	}
 
-	brickDB, err := brickDb.MakeBrickDB(fsc.Remotes(), fsc.DefaultRemotesDir())
-	if err != nil {
-		panic(err)
-	}
+	brickDbFactory := brickDb.Factory{}
 
 	dependencyManager := dependencyManager.ConanDependencyManager{}
 	servicePersistence := service.FileSystemServicePersistence{DependencyReader: dependencyManager}
 	ServiceBuilder := service.CMakeService{}
 
 	serviceApi := core.ServiceApi{
-		Db:                 brickDB,
+		Configuration:      config,
+		BrickDBFactory:     brickDbFactory,
 		ServicePersistence: servicePersistence,
 		ServiceBuilder:     ServiceBuilder,
 		DependencyInfo:     dependencyManager,
@@ -37,7 +35,9 @@ func main() {
 		Stderr:             os.Stderr,
 	}
 
-	brickApi := core.BrickApi{Db: brickDB,
+	brickApi := core.BrickApi{
+		Configuration:           config,
+		BrickDBFactory:          brickDbFactory,
 		PackageDependencyReader: dependencyManager,
 		PackageDependencyWriter: dependencyManager,
 		DependencyInfo:          dependencyManager,
@@ -45,7 +45,10 @@ func main() {
 		ServiceApi:              serviceApi,
 	}
 
-	remoteApi := core.RemoteApi{Config: fsc}
+	remoteApi := core.RemoteApi{
+		Configuration:  config,
+		BrickDBFactory: brickDbFactory,
+	}
 
 	cmd.SetApis(brickApi, serviceApi, remoteApi)
 	cmd.Execute()
