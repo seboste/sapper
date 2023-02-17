@@ -10,6 +10,7 @@ import (
 type RemoteApi struct {
 	Configuration  ports.Configuration
 	BrickDBFactory ports.BrickDBFactory
+	BrickUpgrader  ports.BrickUpgrader
 }
 
 func findRemote(remotes []ports.Remote, name string) (index int, remote ports.Remote, ok bool) {
@@ -100,6 +101,33 @@ func (r RemoteApi) Update(name string) error {
 	return brickDB.Update()
 }
 func (r RemoteApi) Upgrade(name string) error {
+	_, remote, ok := findRemote(r.Configuration.Remotes(), name)
+	if !ok {
+		return fmt.Errorf("remote %s does not exist", name)
+	}
+
+	brickDB, err := r.BrickDBFactory.MakeBrickDB(remote, r.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
+
+	errorCount := 0
+	allBricks := []ports.Brick{}
+	for _, k := range ports.BrickKinds {
+		allBricks = append(allBricks, brickDB.Bricks(k)...)
+	}
+
+	for i, brick := range allBricks {
+		fmt.Printf("upgrading %s (%v/%v)...\n", brick.Id, i+1, len(allBricks))
+		err := r.BrickUpgrader.UpgradeInDB(brick.Id, brickDB)
+		if err != nil {
+			errorCount++
+		}
+	}
+
+	if errorCount > 0 {
+		return fmt.Errorf("%v of %v bricks failed to upgrade.", errorCount, len(allBricks))
+	}
 	return nil
 }
 func (r RemoteApi) List() []ports.Remote {

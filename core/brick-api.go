@@ -79,13 +79,7 @@ func isInDependencySection(line string, state string) (bool, string) {
 	return state == "CONAN-DEPENDENCIES", state
 }
 
-func (b BrickApi) Upgrade(brickId string) error {
-	//1. read package dependencies from brick
-	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
-	if err != nil {
-		return err
-	}
-
+func (b BrickApi) UpgradeInDB(brickId string, db ports.BrickDB) error {
 	brick, err := db.Brick(brickId)
 	if err != nil {
 		return err
@@ -96,7 +90,7 @@ func (b BrickApi) Upgrade(brickId string) error {
 	}
 
 	//2. check if update is required
-	allUptodate := true
+	toBeUpdated := []ports.PackageDependency{}
 	for _, d := range dependencies {
 		vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version}
 		availableVersionStrings, err := b.DependencyInfo.AvailableVersions(d.Id)
@@ -109,13 +103,13 @@ func (b BrickApi) Upgrade(brickId string) error {
 			vus.target = vus.latestAvailable
 			if vus.UpgradeRequired() {
 				fmt.Printf("%s: scheduled for upgrade from %s to %s \n", d.Id, vus.previous, vus.target)
-				allUptodate = false
+				toBeUpdated = append(toBeUpdated, d)
 			} else {
 				fmt.Printf("%s: current version %s is already up to date. No upgrade required.\n", d.Id, vus.previous)
 			}
 		}
 	}
-	if allUptodate {
+	if len(toBeUpdated) == 0 {
 		fmt.Println("all dependencies are up to date. Nothing to do.")
 		return nil
 	}
@@ -146,7 +140,7 @@ func (b BrickApi) Upgrade(brickId string) error {
 
 	//4. do the upgrade
 	upgradeMap := map[string]VersionUpgradeSpec{}
-	for _, d := range dependencies {
+	for _, d := range toBeUpdated {
 		fmt.Printf("%s: ", d.Id)
 		vus, err := b.ServiceApi.upgradeDependency(service, d, false)
 		if err == nil {
@@ -169,12 +163,30 @@ func (b BrickApi) Upgrade(brickId string) error {
 	}
 
 	//6. print status
+	errorCount := 0
 	for dependency, vus := range upgradeMap {
 		pd := ports.PackageDependency{Id: dependency, Version: vus.previous}
 		vus.PrintStatus(os.Stdout, pd)
+		if !vus.UpgradeToTargetSuccessful() {
+			errorCount++
+		}
+	}
+
+	if errorCount > 0 {
+		return fmt.Errorf("%s: failed to upgrade %v of %v dependencies", brickId, errorCount, len(upgradeMap))
 	}
 
 	return nil
+}
+
+func (b BrickApi) Upgrade(brickId string) error {
+	//1. read package dependencies from brick
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
+
+	return b.UpgradeInDB(brickId, db)
 }
 
 func (b BrickApi) List() []ports.Brick {
@@ -202,3 +214,4 @@ func (b BrickApi) Search(term string) []ports.Brick {
 }
 
 var _ ports.BrickApi = BrickApi{}
+var _ ports.BrickUpgrader = BrickApi{}

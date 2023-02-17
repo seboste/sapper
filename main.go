@@ -48,6 +48,7 @@ func main() {
 	remoteApi := core.RemoteApi{
 		Configuration:  &config,
 		BrickDBFactory: brickDbFactory,
+		BrickUpgrader:  brickApi,
 	}
 
 	cmd.SetApis(brickApi, serviceApi, remoteApi)

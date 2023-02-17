@@ -22,6 +22,8 @@ const (
 	Extension
 )
 
+var BrickKinds = []BrickKind{Template, Extension}
+
 type Brick struct {
 	Id           string
 	Description  string
