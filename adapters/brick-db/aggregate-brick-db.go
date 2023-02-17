@@ -46,4 +46,16 @@ func (abdb AggregateBrickDB) Update() error {
 	return nil
 }
 
+func (abdb AggregateBrickDB) IsModified() (bool, string) {
+	modified := false
+	details := ""
+	for _, db := range abdb.dbs {
+		if m, d := db.IsModified(); m {
+			modified = true
+			details = details + d
+		}
+	}
+	return modified, details
+}
+
 var _ ports.BrickDB = AggregateBrickDB{}

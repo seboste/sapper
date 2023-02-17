@@ -394,6 +394,10 @@ func (db *TestBrickDB) Update() error {
 	return nil
 }
 
+func (db TestBrickDB) IsModified() (bool, string) {
+	return false, ""
+}
+
 var _ ports.BrickDB = (*TestBrickDB)(nil)
 
 func TestGetBricksRecursive(t *testing.T) {

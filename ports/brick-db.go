@@ -44,6 +44,7 @@ type BrickDB interface {
 	Bricks(kind BrickKind) []Brick
 	Brick(id string) (Brick, error)
 	Update() error
+	IsModified() (bool, string)
 }
 
 var (

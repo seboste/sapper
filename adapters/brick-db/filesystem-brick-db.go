@@ -97,4 +97,8 @@ func (db *FilesystemBrickDB) Update() error {
 	return nil
 }
 
+func (db FilesystemBrickDB) IsModified() (bool, string) {
+	return false, "unable to identify"
+}
+
 var _ ports.BrickDB = &FilesystemBrickDB{}

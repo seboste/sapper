@@ -125,9 +125,14 @@ func (r RemoteApi) Upgrade(name string) error {
 		}
 	}
 
+	if modified, details := brickDB.IsModified(); modified {
+		fmt.Println(details)
+	}
+
 	if errorCount > 0 {
 		return fmt.Errorf("%v of %v bricks failed to upgrade.", errorCount, len(allBricks))
 	}
+
 	return nil
 }
 func (r RemoteApi) List() []ports.Remote {
