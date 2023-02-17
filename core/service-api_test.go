@@ -350,9 +350,14 @@ and that's it.
 }
 
 type TestBrickDB struct {
+	initCalled   *bool
+	updateCalled *bool
 }
 
-func (db TestBrickDB) Init(Path string) error {
+func (db *TestBrickDB) Init(Path string) error {
+	if db.initCalled != nil {
+		*db.initCalled = true
+	}
 	return nil
 }
 
@@ -382,12 +387,16 @@ func (db TestBrickDB) Brick(id string) (ports.Brick, error) {
 	return ports.Brick{}, fmt.Errorf("brick with id %s does not exist", id)
 }
 
-func (db TestBrickDB) Update() error {
+func (db *TestBrickDB) Update() error {
+	if db.updateCalled != nil {
+		*db.updateCalled = true
+	}
 	return nil
 }
 
+var _ ports.BrickDB = (*TestBrickDB)(nil)
+
 func TestGetBricksRecursive(t *testing.T) {
-	testBrickDb := TestBrickDB{}
 	type args struct {
 		brickId string
 		db      ports.BrickDB
@@ -400,25 +409,25 @@ func TestGetBricksRecursive(t *testing.T) {
 	}{
 		{
 			name:    "no_dependencies",
-			args:    args{brickId: "brick4", db: testBrickDb},
+			args:    args{brickId: "brick4", db: &TestBrickDB{}},
 			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}},
 			wantErr: false,
 		},
 		{
 			name:    "single_dependency",
-			args:    args{brickId: "brick2", db: testBrickDb},
+			args:    args{brickId: "brick2", db: &TestBrickDB{}},
 			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}, {Id: "brick2", Dependencies: []string{"brick4"}}},
 			wantErr: false,
 		},
 		{
 			name:    "diamond",
-			args:    args{brickId: "brick1", db: testBrickDb},
+			args:    args{brickId: "brick1", db: &TestBrickDB{}},
 			want:    []ports.Brick{{Id: "brick4", Dependencies: []string{}}, {Id: "brick2", Dependencies: []string{"brick4"}}, {Id: "brick3", Dependencies: []string{"brick4"}}, {Id: "brick1", Dependencies: []string{"brick2", "brick3"}}},
 			wantErr: false,
 		},
 		{
 			name:    "cycle",
-			args:    args{brickId: "brick5", db: testBrickDb},
+			args:    args{brickId: "brick5", db: &TestBrickDB{}},
 			want:    nil,
 			wantErr: true,
 		},

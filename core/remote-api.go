@@ -19,6 +19,8 @@ func findRemote(remotes []ports.Remote, name string) (index int, remote ports.Re
 			return
 		}
 	}
+	remote = ports.Remote{}
+	index = -1
 	ok = false
 	return
 }
@@ -70,6 +72,7 @@ func (r RemoteApi) Add(name string, src string, position int) error {
 
 	return nil
 }
+
 func (r RemoteApi) Remove(name string) error {
 	remotes := r.Configuration.Remotes()
 	if i, _, ok := findRemote(remotes, name); ok {
