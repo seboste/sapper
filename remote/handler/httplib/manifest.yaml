@@ -1,6 +1,0 @@
----
-id : handler-httplib
-version : 1.0.0
-kind: extension
-description : http handler
-dependencies : [ base-hexagonal-skeleton ]

@@ -16,7 +16,8 @@ import (
 )
 
 type ServiceApi struct {
-	Db                 ports.BrickDB
+	Configuration      ports.Configuration
+	BrickDBFactory     ports.BrickDBFactory
 	ServicePersistence ports.ServicePersistence
 	ServiceBuilder     ports.ServiceBuilder
 	ParameterResolver  ports.ParameterResolver
@@ -101,7 +102,7 @@ func AddSingleBrick(s *ports.Service, b ports.Brick, parameters map[string]strin
 		}
 	}
 
-	s.BrickIds = append(s.BrickIds, ports.BrickDependency{b.Id, b.Version})
+	s.BrickIds = append(s.BrickIds, ports.BrickDependency{Id: b.Id, Version: b.Version})
 
 	return nil
 }
@@ -242,7 +243,12 @@ func GetBricksRecursive(brickId string, db ports.BrickDB, parentBrickIds map[str
 func (s ServiceApi) Add(templateName string, parentDir string, parameterResolver ports.ParameterResolver) (ports.Service, error) {
 	service := ports.Service{}
 
-	bricks, err := GetBricksRecursive(templateName, s.Db, map[string]bool{})
+	db, err := s.BrickDBFactory.MakeAggregatedBrickDB(s.Configuration.Remotes(), s.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return service, err
+	}
+
+	bricks, err := GetBricksRecursive(templateName, db, map[string]bool{})
 	if err != nil {
 		return service, err
 	}

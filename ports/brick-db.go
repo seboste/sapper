@@ -1,11 +1,14 @@
 package ports
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+var BrickNotFound = errors.New("brick not found")
 
 type BrickParameters struct {
 	Name    string
@@ -19,6 +22,8 @@ const (
 	Extension
 )
 
+var BrickKinds = []BrickKind{Template, Extension}
+
 type Brick struct {
 	Id           string
 	Description  string
@@ -30,10 +35,16 @@ type Brick struct {
 	Files        []string
 }
 
+type BrickDBFactory interface {
+	MakeBrickDB(r Remote, remotesDir string) (BrickDB, error)
+	MakeAggregatedBrickDB(r []Remote, remotesDir string) (BrickDB, error)
+}
+
 type BrickDB interface {
-	Init(Path string) error
 	Bricks(kind BrickKind) []Brick
 	Brick(id string) (Brick, error)
+	Update() error
+	IsModified() (bool, string)
 }
 
 var (

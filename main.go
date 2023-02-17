@@ -1,27 +1,32 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/seboste/sapper/adapters"
+	brickDb "github.com/seboste/sapper/adapters/brick-db"
+	configuration "github.com/seboste/sapper/adapters/configuration"
+	dependencyManager "github.com/seboste/sapper/adapters/dependency-manager"
+	"github.com/seboste/sapper/adapters/service"
 	"github.com/seboste/sapper/cmd"
 	"github.com/seboste/sapper/core"
 )
 
 func main() {
-	brickDb := &adapters.FilesystemBrickDB{}
-	err := brickDb.Init("./remote")
+
+	config, err := configuration.MakeFilesystemConfiguration()
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
 
-	dependencyManager := adapters.ConanDependencyManager{}
-	servicePersistence := adapters.FileSystemServicePersistence{DependencyReader: dependencyManager}
-	ServiceBuilder := adapters.CMakeService{}
+	brickDbFactory := brickDb.Factory{}
+
+	dependencyManager := dependencyManager.ConanDependencyManager{}
+	servicePersistence := service.FileSystemServicePersistence{DependencyReader: dependencyManager}
+	ServiceBuilder := service.CMakeService{}
 
 	serviceApi := core.ServiceApi{
-		Db:                 brickDb,
+		Configuration:      &config,
+		BrickDBFactory:     brickDbFactory,
 		ServicePersistence: servicePersistence,
 		ServiceBuilder:     ServiceBuilder,
 		DependencyInfo:     dependencyManager,
@@ -30,13 +35,22 @@ func main() {
 		Stderr:             os.Stderr,
 	}
 
-	brickApi := core.BrickApi{Db: brickDb,
+	brickApi := core.BrickApi{
+		Configuration:           &config,
+		BrickDBFactory:          brickDbFactory,
 		PackageDependencyReader: dependencyManager,
 		PackageDependencyWriter: dependencyManager,
 		DependencyInfo:          dependencyManager,
 		ServicePersistence:      servicePersistence,
 		ServiceApi:              serviceApi,
 	}
-	cmd.SetApis(brickApi, serviceApi, core.RemoteApi{})
+
+	remoteApi := core.RemoteApi{
+		Configuration:  &config,
+		BrickDBFactory: brickDbFactory,
+		BrickUpgrader:  brickApi,
+	}
+
+	cmd.SetApis(brickApi, serviceApi, remoteApi)
 	cmd.Execute()
 }

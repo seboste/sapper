@@ -11,7 +11,8 @@ import (
 )
 
 type BrickApi struct {
-	Db                      ports.BrickDB
+	Configuration           ports.Configuration
+	BrickDBFactory          ports.BrickDBFactory
 	ServicePersistence      ports.ServicePersistence
 	PackageDependencyReader ports.BrickPackageDependencyReader
 	PackageDependencyWriter ports.BrickPackageDependencyWriter
@@ -35,8 +36,12 @@ func removeBricks(bricks []ports.Brick, brickIdsToRemove []ports.BrickDependency
 }
 
 func (b BrickApi) Add(servicePath string, brickId string, parameterResolver ports.ParameterResolver) error {
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
 
-	bricks, err := GetBricksRecursive(brickId, b.Db, map[string]bool{})
+	bricks, err := GetBricksRecursive(brickId, db, map[string]bool{})
 	if err != nil {
 		return err
 	}
@@ -74,9 +79,8 @@ func isInDependencySection(line string, state string) (bool, string) {
 	return state == "CONAN-DEPENDENCIES", state
 }
 
-func (b BrickApi) Upgrade(brickId string) error {
-	//1. read package dependencies from brick
-	brick, err := b.Db.Brick(brickId)
+func (b BrickApi) UpgradeInDB(brickId string, db ports.BrickDB) error {
+	brick, err := db.Brick(brickId)
 	if err != nil {
 		return err
 	}
@@ -86,7 +90,7 @@ func (b BrickApi) Upgrade(brickId string) error {
 	}
 
 	//2. check if update is required
-	allUptodate := true
+	toBeUpdated := []ports.PackageDependency{}
 	for _, d := range dependencies {
 		vus := VersionUpgradeSpec{previous: d.Version, latestWorking: d.Version}
 		availableVersionStrings, err := b.DependencyInfo.AvailableVersions(d.Id)
@@ -99,13 +103,13 @@ func (b BrickApi) Upgrade(brickId string) error {
 			vus.target = vus.latestAvailable
 			if vus.UpgradeRequired() {
 				fmt.Printf("%s: scheduled for upgrade from %s to %s \n", d.Id, vus.previous, vus.target)
-				allUptodate = false
+				toBeUpdated = append(toBeUpdated, d)
 			} else {
 				fmt.Printf("%s: current version %s is already up to date. No upgrade required.\n", d.Id, vus.previous)
 			}
 		}
 	}
-	if allUptodate {
+	if len(toBeUpdated) == 0 {
 		fmt.Println("all dependencies are up to date. Nothing to do.")
 		return nil
 	}
@@ -136,7 +140,7 @@ func (b BrickApi) Upgrade(brickId string) error {
 
 	//4. do the upgrade
 	upgradeMap := map[string]VersionUpgradeSpec{}
-	for _, d := range dependencies {
+	for _, d := range toBeUpdated {
 		fmt.Printf("%s: ", d.Id)
 		vus, err := b.ServiceApi.upgradeDependency(service, d, false)
 		if err == nil {
@@ -159,21 +163,49 @@ func (b BrickApi) Upgrade(brickId string) error {
 	}
 
 	//6. print status
+	errorCount := 0
 	for dependency, vus := range upgradeMap {
 		pd := ports.PackageDependency{Id: dependency, Version: vus.previous}
 		vus.PrintStatus(os.Stdout, pd)
+		if !vus.UpgradeToTargetSuccessful() {
+			errorCount++
+		}
+	}
+
+	if errorCount > 0 {
+		return fmt.Errorf("%s: failed to upgrade %v of %v dependencies", brickId, errorCount, len(upgradeMap))
 	}
 
 	return nil
 }
 
+func (b BrickApi) Upgrade(brickId string) error {
+	//1. read package dependencies from brick
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
+
+	return b.UpgradeInDB(brickId, db)
+}
+
 func (b BrickApi) List() []ports.Brick {
-	return b.Db.Bricks(ports.Extension)
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return nil
+	}
+
+	return db.Bricks(ports.Extension)
 }
 
 func (b BrickApi) Search(term string) []ports.Brick {
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return nil
+	}
+
 	filteredBricks := []ports.Brick{}
-	for _, brick := range b.Db.Bricks(ports.Extension) {
+	for _, brick := range db.Bricks(ports.Extension) {
 		if strings.Contains(brick.Id, term) || strings.Contains(brick.Description, term) {
 			filteredBricks = append(filteredBricks, brick)
 		}
@@ -182,3 +214,4 @@ func (b BrickApi) Search(term string) []ports.Brick {
 }
 
 var _ ports.BrickApi = BrickApi{}
+var _ ports.BrickUpgrader = BrickApi{}
