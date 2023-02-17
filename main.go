@@ -25,7 +25,7 @@ func main() {
 	ServiceBuilder := service.CMakeService{}
 
 	serviceApi := core.ServiceApi{
-		Configuration:      config,
+		Configuration:      &config,
 		BrickDBFactory:     brickDbFactory,
 		ServicePersistence: servicePersistence,
 		ServiceBuilder:     ServiceBuilder,
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	brickApi := core.BrickApi{
-		Configuration:           config,
+		Configuration:           &config,
 		BrickDBFactory:          brickDbFactory,
 		PackageDependencyReader: dependencyManager,
 		PackageDependencyWriter: dependencyManager,
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	remoteApi := core.RemoteApi{
-		Configuration:  config,
+		Configuration:  &config,
 		BrickDBFactory: brickDbFactory,
 	}
 

@@ -382,6 +382,10 @@ func (db TestBrickDB) Brick(id string) (ports.Brick, error) {
 	return ports.Brick{}, fmt.Errorf("brick with id %s does not exist", id)
 }
 
+func (db TestBrickDB) Update() error {
+	return nil
+}
+
 func TestGetBricksRecursive(t *testing.T) {
 	testBrickDb := TestBrickDB{}
 	type args struct {

@@ -93,4 +93,8 @@ func (db *FilesystemBrickDB) Brick(id string) (ports.Brick, error) {
 	return ports.Brick{}, ports.BrickNotFound
 }
 
+func (db *FilesystemBrickDB) Update() error {
+	return nil
+}
+
 var _ ports.BrickDB = &FilesystemBrickDB{}

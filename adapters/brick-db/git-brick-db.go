@@ -23,7 +23,7 @@ func (gbdb GitBrickDB) Clone() error {
 
 func (gbdb GitBrickDB) Update() error {
 	cmd := exec.Command("git", "pull")
-	cmd.Path = gbdb.Path
+	cmd.Dir = gbdb.Path
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()

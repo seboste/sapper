@@ -37,4 +37,13 @@ func (abdb AggregateBrickDB) Brick(id string) (ports.Brick, error) {
 	return ports.Brick{}, ports.BrickNotFound
 }
 
+func (abdb AggregateBrickDB) Update() error {
+	for _, db := range abdb.dbs {
+		if err := db.Update(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var _ ports.BrickDB = AggregateBrickDB{}

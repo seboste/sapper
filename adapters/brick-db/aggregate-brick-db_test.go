@@ -26,6 +26,10 @@ func (db MockBrickDB) Brick(id string) (ports.Brick, error) {
 	return ports.Brick{}, ports.BrickNotFound
 }
 
+func (db MockBrickDB) Update() error {
+	return nil
+}
+
 func TestAggregateBrickDB_Bricks(t *testing.T) {
 	bricksTemplate := []ports.Brick{{Id: "TemplateA"}, {Id: "TemplateB"}}
 	bricksExtension := []ports.Brick{{Id: "ExtensionA"}, {Id: "ExtensionB"}}

@@ -4,5 +4,5 @@ type Configuration interface {
 	Save() error
 	DefaultRemotesDir() string
 	Remotes() []Remote
-	UpdateRemotes(remotes []Remote) error
+	UpdateRemotes(remotes []Remote)
 }

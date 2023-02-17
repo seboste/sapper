@@ -88,8 +88,8 @@ func (fsc FileSystemConfiguration) Remotes() []ports.Remote {
 	return fsc.Rmts
 }
 
-func (fsc FileSystemConfiguration) UpdateRemotes(remotes []ports.Remote) error {
-	return nil
+func (fsc *FileSystemConfiguration) UpdateRemotes(remotes []ports.Remote) {
+	fsc.Rmts = remotes
 }
 
-var _ ports.Configuration = FileSystemConfiguration{}
+var _ ports.Configuration = (*FileSystemConfiguration)(nil)
