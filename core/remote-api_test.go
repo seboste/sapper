@@ -1,6 +1,7 @@
 package core
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -41,10 +42,10 @@ func TestAdd(t *testing.T) {
 
 func Test_inferKind(t *testing.T) {
 
-	dir, _ := os.MkdirTemp("", "testInferKind*")
+	dir, _ := ioutil.TempDir("", "testInferKind*")
 	defer os.RemoveAll(dir)
 
-	file, _ := os.CreateTemp("", "testInferKind*.txt")
+	file, _ := ioutil.TempFile("", "testInferKind*.txt")
 	defer os.Remove(file.Name())
 	defer file.Close()
 
