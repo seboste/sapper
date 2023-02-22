@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,12 +18,13 @@ var serviceCmd = &cobra.Command{
 var keepMajorVersion *bool
 
 var addServiceCmd = &cobra.Command{
-	Use:   "add [folder]",
-	Short: "Adds a new C++ microservice",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "add [folder]",
+	Short:         "Adds a new C++ microservice",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			fmt.Println("service folder argument is missing")
-			return
+			return errors.New("service folder argument is missing")
 		}
 
 		path, name := filepath.Split(args[0])
@@ -30,77 +32,76 @@ var addServiceCmd = &cobra.Command{
 
 		r, err := parameterResolver.MakeSapperParameterResolver(cmd.Flags(), name)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
-		if _, err := serviceApi.Add(template, path, r); err != nil {
-			fmt.Println(err)
-		}
+		_, err = serviceApi.Add(template, path, r)
+		return err
 	},
 }
 
 var describeServiceCmd = &cobra.Command{
-	Use:   "describe [service folder]",
-	Short: "Prints information about a service",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "describe [service folder]",
+	Short:         "Prints information about a service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			fmt.Println("service folder argument is missing")
-			return
+			return errors.New("service folder argument is missing")
 		}
-		err := serviceApi.Describe(args[0], os.Stdout)
-
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		return serviceApi.Describe(args[0], os.Stdout)
 	},
 }
 
 var upgradeServiceCmd = &cobra.Command{
-	Use:   "upgrade [service folder]",
-	Short: "upgrades the dependencies of the service",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "upgrade [service folder]",
+	Short:         "upgrades the dependencies of the service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.PersistentFlags()
-		err := serviceApi.Upgrade(args[0], *keepMajorVersion)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		return serviceApi.Upgrade(args[0], *keepMajorVersion)
 	},
 }
 
 var buildServiceCmd = &cobra.Command{
-	Use:   "build [service folder]",
-	Short: "Builds the service",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "build [service folder]",
+	Short:         "Builds the service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		if len(args) < 1 {
-			fmt.Println("service folder argument is missing")
-			return
+			return errors.New("service folder argument is missing")
 		}
 
 		fmt.Printf("building service...")
 		buildLogFilename, err := serviceApi.Build(args[0])
 		if err != nil {
 			fmt.Printf("failed (see %s for details)\n", buildLogFilename)
+			return err
 		} else {
 			fmt.Println("success")
 		}
+		return nil
 	},
 }
 
 var testServiceCmd = &cobra.Command{
-	Use:   "test [template]",
-	Short: "Tests the service",
+	Use:           "test [template]",
+	Short:         "Tests the service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		serviceApi.Test()
 	},
 }
 
 var deployServiceCmd = &cobra.Command{
-	Use:   "deploy [template]",
-	Short: "Deploy the service",
+	Use:           "deploy [template]",
+	Short:         "Deploy the service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		serviceApi.Deploy()
 	},
