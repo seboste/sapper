@@ -62,8 +62,10 @@ func AddSingleBrick(s *ports.Service, b ports.Brick, parameters map[string]strin
 
 		outputFilePath := filepath.Join(s.Path, f)
 		outputDir, _ := filepath.Split(outputFilePath)
-		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-			return err
+		if outputDir != "" {
+			if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+				return err
+			}
 		}
 
 		content, err := ioutil.ReadFile(inputFilePath)
