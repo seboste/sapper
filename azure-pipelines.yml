@@ -24,8 +24,9 @@ steps:
      workingDirectory: '$(System.DefaultWorkingDirectory)'
    displayName: "Build"
  - script: |
-      go get -u github.com/jstemmer/go-junit-report
-      go test -v ./... 2>&1 | $(go env GOPATH)/bin/go-junit-report | tee test_report.xml
+      export GOBIN=/usr/local/bin/     
+      go install github.com/jstemmer/go-junit-report@latest
+      go test -v ./... 2>&1 | go-junit-report | tee test_report.xml
    displayName: "Test"
    workingDirectory: '$(System.DefaultWorkingDirectory)'
  - task: PublishTestResults@2
