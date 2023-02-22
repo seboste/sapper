@@ -10,7 +10,7 @@ pool:
 steps: 
  - task: GoTool@0
    inputs:
-     version: '1.13.5'
+     version: '1.20.1'
  - task: Go@0
    inputs:
      command: 'get'
@@ -23,22 +23,16 @@ steps:
      arguments: '-v'
      workingDirectory: '$(System.DefaultWorkingDirectory)'
    displayName: "Build"
- - task: Go@0
-   inputs:
-     command: 'get'
-     arguments: '-u github.com/jstemmer/go-junit-report'
-     workingDirectory: '$(System.DefaultWorkingDirectory)'
-   displayName: "Get Test Dependencies"   
- - task: Bash@3
-   name: "go_test"
-   inputs:
-     targetType: "inline"
-     script: "go test -v ./... 2>&1 | $(go env GOPATH)/bin/go-junit-report | tee test_report.xml"
+ - script: |
+      export GOBIN=/usr/local/bin/     
+      go install github.com/jstemmer/go-junit-report@latest
+      go test -v ./... 2>&1 | go-junit-report | tee test_report.xml
    displayName: "Test"
+   workingDirectory: '$(System.DefaultWorkingDirectory)'
  - task: PublishTestResults@2
    condition: always()
    inputs:
      testResultsFormat: 'JUnit'
      testResultsFiles: './test_report.xml'
      failTaskOnFailedTests: true
-   displayName: "Publish Test Results"
+   displayName: "Publish Test Results"   

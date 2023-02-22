@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	parameterResolver "github.com/seboste/sapper/adapters/parameter-resolver"
@@ -18,50 +19,43 @@ var brickCmd = &cobra.Command{
 }
 
 var addBrickCmd = &cobra.Command{
-	Use:   "add [template]",
-	Short: "Adds another building brick to the C++ microservice",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "add [template]",
+	Short:         "Adds another building brick to the C++ microservice",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			fmt.Println("brick id argument is missing")
-			return
+			return errors.New("brick id argument is missing")
 		}
-
 		brickId := args[0]
 		service, _ := cmd.Flags().GetString("service")
-
 		r, err := parameterResolver.MakeSapperParameterResolver(cmd.Flags(), "")
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
-
-		err = brickApi.Add(service, brickId, r)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+		return brickApi.Add(service, brickId, r)
 	},
 }
 
 var upgradeBrickCmd = &cobra.Command{
-	Use:   "upgrade [brickId]",
-	Short: "upgrades the dependencies of a brick",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "upgrade [brickId]",
+	Short:         "upgrades the dependencies of a brick",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			fmt.Println("brick id argument is missing")
-			return
+			return errors.New("brick id argument is missing")
 		}
 		brickId := args[0]
-		if err := brickApi.Upgrade(brickId); err != nil {
-			fmt.Println(err)
-			return
-		}
+		return brickApi.Upgrade(brickId)
 	},
 }
 
 var listBrickCmd = &cobra.Command{
-	Use:   "list [template]",
-	Short: "Displays information about building bricks",
+	Use:           "list [template]",
+	Short:         "Displays information about building bricks",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		bricks := brickApi.List()
 		fmt.Printf("found a total of %d bricks\n", len(bricks))
@@ -72,18 +66,20 @@ var listBrickCmd = &cobra.Command{
 }
 
 var searchBrickCmd = &cobra.Command{
-	Use:   "search <term>",
-	Short: "Searches for building bricks in the id or description",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:           "search <term>",
+	Short:         "Searches for building bricks in the id or description",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) < 1 {
-			fmt.Println("Unable to search for building bricks. The search term is missing")
-			return
+			return errors.New("Unable to search for building bricks. The search term is missing")
 		}
 		bricks := brickApi.Search(args[0])
 		fmt.Printf("found a total of %d bricks\n", len(bricks))
 		for _, b := range brickApi.Search(args[0]) {
 			Print(b)
 		}
+		return nil
 	},
 }
 
