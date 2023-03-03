@@ -168,7 +168,9 @@ func mergeSections(content string, inputSections map[string]section) (string, er
 				outputContent = outputContent + fmt.Sprintln(mergedSectionContent)
 			}
 		} else { // no incoming section => just use base content
-			outputContent = outputContent + s.content
+			if s.content != "" {
+				outputContent = outputContent + fmt.Sprintln(s.content)
+			}
 		}
 		for lineNumber < s.lineEnd && scanner.Scan() { //skip section content
 			lineNumber = lineNumber + 1

@@ -124,6 +124,34 @@ b
 2<<<SAPPER SECTION END BLA>>>
 3
 `, wantErr: false},
+		{name: "multiple sections", args: args{inputSections: map[string]section{"BLA": {name: "BLA", content: "b", verb: "REPLACE"}},
+			content: `
+//<<<SAPPER SECTION BEGIN BLUB>>>
+//<<<SAPPER SECTION END BLUB>>>
+
+//<<<SAPPER SECTION BEGIN WURST>>>
+abc
+//<<<SAPPER SECTION END WURST>>>
+
+//<<<SAPPER SECTION BEGIN BLA>>>
+a
+//<<<SAPPER SECTION END BLA>>>
+
+xyz
+`}, want: `
+//<<<SAPPER SECTION BEGIN BLUB>>>
+//<<<SAPPER SECTION END BLUB>>>
+
+//<<<SAPPER SECTION BEGIN WURST>>>
+abc
+//<<<SAPPER SECTION END WURST>>>
+
+//<<<SAPPER SECTION BEGIN BLA>>>
+b
+//<<<SAPPER SECTION END BLA>>>
+
+xyz
+`, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
