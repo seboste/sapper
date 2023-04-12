@@ -60,6 +60,8 @@ func Test_mergeSection(t *testing.T) {
 		{name: "append", args: args{base: section{content: "a"}, incoming: section{content: "b", verb: "APPEND"}}, want: "a\nb", wantErr: false},
 		{name: "prepend", args: args{base: section{content: "a"}, incoming: section{content: "b", verb: "PREPEND"}}, want: "b\na", wantErr: false},
 		{name: "replace", args: args{base: section{content: "a"}, incoming: section{content: "b", verb: "REPLACE"}}, want: "b", wantErr: false},
+		{name: "merge", args: args{base: section{content: "a"}, incoming: section{content: "b", verb: "MERGE"}}, want: "a\nb", wantErr: false},
+		{name: "merge same", args: args{base: section{content: "a"}, incoming: section{content: "a", verb: "MERGE"}}, want: "a", wantErr: false},
 		{name: "append empty b", args: args{base: section{content: "a"}, incoming: section{content: "", verb: "APPEND"}}, want: "a", wantErr: false},
 		{name: "append empty a", args: args{base: section{content: ""}, incoming: section{content: "b", verb: "APPEND"}}, want: "b", wantErr: false},
 		{name: "prepend empty b", args: args{base: section{content: "a"}, incoming: section{content: "", verb: "PREPEND"}}, want: "a", wantErr: false},
@@ -780,6 +782,76 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ServiceApi.upgradeDependency() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_toText(t *testing.T) {
+	type args struct {
+		lines []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{name: "single line", args: args{lines: []string{"abc"}}, want: "abc"},
+		{name: "multiple lines", args: args{lines: []string{"abc", "xyz"}}, want: "abc\nxyz"},
+		{name: "empty", args: args{lines: []string{}}, want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := toText(tt.args.lines); got != tt.want {
+				t.Errorf("toText() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_lines(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{name: "single line", args: args{s: "abc"}, want: []string{"abc"}},
+		{name: "single line with newline", args: args{s: "abc\n"}, want: []string{"abc"}},
+		{name: "multiple lines", args: args{s: "abc\nxyz\n"}, want: []string{"abc", "xyz"}},
+		{name: "empty", args: args{s: ""}, want: []string{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := lines(tt.args.s); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("lines() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_mergeLines(t *testing.T) {
+	type args struct {
+		base     []string
+		incoming []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{name: "single incoming line already there", args: args{base: []string{"abc", "def"}, incoming: []string{"def"}}, want: []string{"abc", "def"}},
+		{name: "single incoming line not there", args: args{base: []string{"abc", "def"}, incoming: []string{"xyz"}}, want: []string{"abc", "def", "xyz"}},
+		{name: "multiple incoming lines", args: args{base: []string{"abc", "def"}, incoming: []string{"def", "xyz"}}, want: []string{"abc", "def", "xyz"}},
+		{name: "empty incoming lines", args: args{base: []string{"abc", "def"}, incoming: []string{}}, want: []string{"abc", "def"}},
+		{name: "empty base lines", args: args{base: []string{}, incoming: []string{"def"}}, want: []string{"def"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := mergeLines(tt.args.base, tt.args.incoming); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("mergeLines() = %v, want %v", got, tt.want)
 			}
 		})
 	}

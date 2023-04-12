@@ -137,9 +137,50 @@ func mergeSection(base section, incoming section) (string, error) {
 		}
 		content = content + incoming.content
 		return content, nil
+	} else if incoming.verb == "MERGE" {
+		return toText(mergeLines(lines(base.content), lines(incoming.content))), nil
 	} else {
 		return "", fmt.Errorf("Unable to merge section %s. Invalid incoming operation %s.", base.name, incoming.verb)
 	}
+}
+
+func lines(s string) []string {
+	result := []string{}
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		result = append(result, scanner.Text())
+	}
+	return result
+}
+
+func toText(lines []string) string {
+	result := ""
+	for i, l := range lines {
+		result = result + l
+		if i != len(lines)-1 {
+			result = result + fmt.Sprintln("")
+		}
+	}
+	return result
+}
+
+func mergeLines(base []string, incoming []string) []string {
+	if len(incoming) == 0 {
+		return base
+	}
+
+	incomingAlreadyPresent := false
+	for _, l := range base {
+		if l == incoming[0] {
+			incomingAlreadyPresent = true
+		}
+	}
+
+	if incomingAlreadyPresent == false {
+		base = append(base, incoming[0])
+	}
+
+	return mergeLines(base, incoming[1:])
 }
 
 func mergeSections(content string, inputSections map[string]section) (string, error) {
