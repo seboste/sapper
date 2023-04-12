@@ -15,11 +15,16 @@ var cfgFile string
 var brickApi ports.BrickApi = nil
 var serviceApi ports.ServiceApi = nil
 var remoteApi ports.RemoteApi = nil
+var version string
 
 func SetApis(b ports.BrickApi, s ports.ServiceApi, r ports.RemoteApi) {
 	brickApi = b
 	serviceApi = s
 	remoteApi = r
+}
+
+func SetVersion(v string) {
+	version = v
 }
 
 // rootCmd represents the base command when called without any subcommands
