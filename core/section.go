@@ -22,7 +22,7 @@ type tag struct {
 }
 
 func readTag(line string) *tag {
-	tagExp := regexp.MustCompile(`<<<SAPPER\s*SECTION\s*(BEGIN|END)(\s*(APPEND|REPLACE|PREPEND))?\s*(.*?)>>>`)
+	tagExp := regexp.MustCompile(`<<<SAPPER\s*SECTION\s*(BEGIN|END)(\s*(APPEND|REPLACE|PREPEND|MERGE))?\s*(.*?)>>>`)
 
 	matches := tagExp.FindStringSubmatch(line)
 	if len(matches) != 5 {
