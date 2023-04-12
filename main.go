@@ -52,5 +52,6 @@ func main() {
 	}
 
 	cmd.SetApis(brickApi, serviceApi, remoteApi)
+	cmd.SetVersion("0.0.1")
 	cmd.Execute()
 }
