@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/seboste/sapper/ports"
-	"github.com/seboste/sapper/utils"
+	pr "github.com/seboste/sapper/utils/parameter-resolver"
 )
 
 type BrickApi struct {
@@ -122,7 +122,7 @@ func (b BrickApi) UpgradeInDB(brickId string, db ports.BrickDB) error {
 	defer os.RemoveAll(parentDir)
 
 	fmt.Printf("creating temp service...")
-	service, err := b.ServiceApi.Add(brickId, parentDir, utils.DummyParameterResolver{})
+	service, err := b.ServiceApi.Add(brickId, parentDir, pr.DummyParameterResolver{})
 	if err != nil {
 		fmt.Printf("failed\n")
 		return err

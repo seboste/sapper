@@ -2,11 +2,12 @@ package parameterResolver
 
 import (
 	"github.com/seboste/sapper/ports"
+	upr "github.com/seboste/sapper/utils/parameter-resolver"
 	"github.com/spf13/pflag"
 )
 
 type SapperParameterResolver struct {
-	cpr CompoundParameterResolver
+	cpr upr.CompoundParameterResolver
 }
 
 func RegisterSapperParameterResolver(flags *pflag.FlagSet) {
@@ -27,13 +28,13 @@ func MakeSapperParameterResolver(flags *pflag.FlagSet, name string) (SapperParam
 
 	//2. set name as fixed parameter
 	if name != "" {
-		resolver = append(resolver, MapBasedParameterResolver{parameters: map[string]string{"NAME": name}})
+		resolver = append(resolver, upr.MakeMapBasedParameterResolver(map[string]string{"NAME": name}))
 	}
 
 	//3. ask user for parameters if other methods failed
 	resolver = append(resolver, InteractiveParameterResolver{})
 
-	return SapperParameterResolver{cpr: CompoundParameterResolver{resolver: resolver}}, nil
+	return SapperParameterResolver{cpr: upr.MakeCompoundParameterResolver(resolver)}, nil
 
 }
 
