@@ -57,7 +57,10 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 		return fmt.Errorf("brick %s has already been added.", brickId)
 	}
 
-	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
+	parameters, err := ResolveParameterSlice(bricks, pr.MakeCompoundParameterResolver([]ports.ParameterResolver{
+		pr.MakeMapBasedParameterResolver(service.Parameters), //first check if parameters have already been defined in the service...
+		parameterResolver, //...if not, ask the external parameter resolver
+	}))
 	if err != nil {
 		return err
 	}
