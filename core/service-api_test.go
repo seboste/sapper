@@ -309,6 +309,7 @@ and even more content
 				Id:           "my_service",
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
 				Dependencies: []ports.PackageDependency{},
+				Parameters:   map[string]string{},
 			},
 			wantErr: false,
 		},
@@ -324,6 +325,7 @@ and even more content
 				Path:         serviceTempDir,
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
 				Dependencies: []ports.PackageDependency{},
+				Parameters:   map[string]string{"bla": "the_bla_value"},
 			},
 			wantFiles: map[string]string{
 				"test.txt": `this is some file
@@ -343,6 +345,7 @@ with some parameter 'bla' which has the value 'the_bla_value'
 				Path:         serviceTempDir,
 				BrickIds:     []ports.BrickDependency{{Id: "b1", Version: "1.0.0"}},
 				Dependencies: []ports.PackageDependency{},
+				Parameters:   map[string]string{},
 			},
 			wantFiles: map[string]string{"some_file_with_section.txt": `this is some file
 which has a section

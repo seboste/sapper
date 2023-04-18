@@ -106,6 +106,13 @@ func AddSingleBrick(s *ports.Service, b ports.Brick, parameters map[string]strin
 
 	s.BrickIds = append(s.BrickIds, ports.BrickDependency{Id: b.Id, Version: b.Version})
 
+	if s.Parameters == nil {
+		s.Parameters = make(map[string]string)
+	}
+	for k, v := range parameters {
+		s.Parameters[k] = v
+	}
+
 	return nil
 }
 

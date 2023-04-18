@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/seboste/sapper/ports"
-	"github.com/seboste/sapper/utils"
+	pr "github.com/seboste/sapper/utils/parameter-resolver"
 )
 
 type BrickApi struct {
@@ -57,7 +57,10 @@ func (b BrickApi) Add(servicePath string, brickId string, parameterResolver port
 		return fmt.Errorf("brick %s has already been added.", brickId)
 	}
 
-	parameters, err := ResolveParameterSlice(bricks, parameterResolver)
+	parameters, err := ResolveParameterSlice(bricks, pr.MakeCompoundParameterResolver([]ports.ParameterResolver{
+		pr.MakeMapBasedParameterResolver(service.Parameters), //first check if parameters have already been defined in the service...
+		parameterResolver, //...if not, ask the external parameter resolver
+	}))
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,7 @@ func (b BrickApi) UpgradeInDB(brickId string, db ports.BrickDB) error {
 	defer os.RemoveAll(parentDir)
 
 	fmt.Printf("creating temp service...")
-	service, err := b.ServiceApi.Add(brickId, parentDir, utils.DummyParameterResolver{})
+	service, err := b.ServiceApi.Add(brickId, parentDir, pr.DummyParameterResolver{})
 	if err != nil {
 		fmt.Printf("failed\n")
 		return err

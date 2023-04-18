@@ -12,6 +12,7 @@ type Service struct {
 	Path         string `yaml:"-"`
 	BrickIds     []BrickDependency
 	Dependencies []PackageDependency `yaml:"-"`
+	Parameters   map[string]string
 }
 
 type ServicePersistence interface {
