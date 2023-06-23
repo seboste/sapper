@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -214,6 +215,11 @@ func (b BrickApi) Search(term string) []ports.Brick {
 		}
 	}
 	return filteredBricks
+}
+
+func (b BrickApi) Describe(brickId string, writer io.Writer) error {
+	fmt.Fprintln(writer, "hallo", brickId)
+	return nil
 }
 
 var _ ports.BrickApi = BrickApi{}
