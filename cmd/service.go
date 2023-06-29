@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	parameterResolver "github.com/seboste/sapper/adapters/parameter-resolver"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var serviceCmd = &cobra.Command{
 }
 
 var keepMajorVersion *bool
+var stopAfter *time.Duration
 
 var addServiceCmd = &cobra.Command{
 	Use:           "add [folder]",
@@ -88,22 +90,65 @@ var buildServiceCmd = &cobra.Command{
 }
 
 var testServiceCmd = &cobra.Command{
-	Use:           "test [template]",
+	Use:           "test [service folder]",
 	Short:         "Tests the service",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Test()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return errors.New("service folder argument is missing")
+		}
+
+		fmt.Printf("testing service...")
+		err := serviceApi.Test(args[0])
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("success")
+		}
+		return nil
 	},
 }
 
 var deployServiceCmd = &cobra.Command{
-	Use:           "deploy [template]",
+	Use:           "deploy [service folder]",
 	Short:         "Deploy the service",
 	SilenceUsage:  true,
 	SilenceErrors: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		serviceApi.Deploy()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return errors.New("service folder argument is missing")
+		}
+
+		fmt.Printf("deploying service...")
+		err := serviceApi.Deploy(args[0])
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("success")
+		}
+		return nil
+	},
+}
+
+var runServiceCmd = &cobra.Command{
+	Use:           "run [service folder]",
+	Short:         "Run the service",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return errors.New("service folder argument is missing")
+		}
+
+		fmt.Printf("running service...")
+		err := serviceApi.Run(args[0], *stopAfter)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println("success")
+		}
+		return nil
 	},
 }
 
@@ -114,6 +159,7 @@ func init() {
 	serviceCmd.AddCommand(buildServiceCmd)
 	serviceCmd.AddCommand(testServiceCmd)
 	serviceCmd.AddCommand(deployServiceCmd)
+	serviceCmd.AddCommand(runServiceCmd)
 
 	rootCmd.AddCommand(serviceCmd)
 
@@ -121,14 +167,5 @@ func init() {
 	parameterResolver.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
 
 	keepMajorVersion = upgradeServiceCmd.PersistentFlags().Bool("keep-major", false, "Upgrades are only conducted within the same major version of a dependency's semantic version")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// brickCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// brickCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	stopAfter = runServiceCmd.PersistentFlags().Duration("stop-after", 0, "Stops the service after a specified time has elapsed. Can be used for e.g. smoke tests.")
 }

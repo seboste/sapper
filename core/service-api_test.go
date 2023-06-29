@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/seboste/sapper/ports"
 )
@@ -559,6 +560,7 @@ func Test_filterSemvers(t *testing.T) {
 type versionBuildinfo struct {
 	Version         string
 	BuildSuccessful bool
+	TestSuccessful  bool
 }
 
 type upgradeDependencyMock struct {
@@ -618,6 +620,37 @@ func (udm upgradeDependencyMock) Build(service ports.Service, output io.Writer) 
 	return nil
 }
 
+func (udm upgradeDependencyMock) Test(service ports.Service, output io.Writer) error {
+	for _, d := range service.Dependencies {
+		dependencyFound := false
+		for _, v := range udm.AvailableVersionMap[d.Id] {
+			if v.Version == d.Version {
+				if !v.TestSuccessful {
+					return fmt.Errorf("test with %s in version %s failed", d.Id, d.Version)
+				} else {
+					dependencyFound = true
+				}
+			}
+		}
+		if !dependencyFound {
+			return fmt.Errorf("dependency %s not found", d.Id)
+		}
+	}
+	return nil
+}
+
+func (udm upgradeDependencyMock) Run(service ports.Service, output io.Writer) error {
+	return nil
+}
+
+func (udm upgradeDependencyMock) Deploy(service ports.Service, output io.Writer) error {
+	return nil
+}
+
+func (udm upgradeDependencyMock) Stop(service ports.Service, output io.Writer) error {
+	return nil
+}
+
 func TestServiceApi_upgradeDependency(t *testing.T) {
 	type fields struct {
 		udm upgradeDependencyMock
@@ -637,7 +670,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 	}{
 		{name: "non semantic version dependency up to date", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -655,7 +688,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "non semantic version dependency upgrade", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -673,7 +706,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "non semantic version dependency upgrade not possible", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: false}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}, {Version: "version B", BuildSuccessful: true, TestSuccessful: true}, {Version: "version C", BuildSuccessful: false, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -691,7 +724,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency up to date", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -709,7 +742,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -727,7 +760,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade keep major", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -745,7 +778,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade not fully possible", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: false}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: false}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -855,6 +888,87 @@ func Test_mergeLines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := mergeLines(tt.args.base, tt.args.incoming); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("mergeLines() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type runMock struct {
+	Err         error
+	hasTimeout  *bool
+	requestStop *chan bool
+	runDuration time.Duration
+}
+
+func (rm runMock) Load(path string) (ports.Service, error) {
+	return ports.Service{}, nil
+}
+
+func (rm runMock) Save(service ports.Service) error {
+	return nil
+}
+func (rm runMock) Build(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Run(service ports.Service, output io.Writer) error {
+
+	if rm.runDuration > 0 {
+		select {
+		case <-*rm.requestStop:
+			*rm.hasTimeout = true
+		case <-time.After(rm.runDuration):
+			*rm.hasTimeout = false
+		}
+	}
+	return rm.Err
+}
+func (rm runMock) Deploy(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Test(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Stop(service ports.Service, output io.Writer) error {
+	*rm.requestStop <- true
+	return nil
+}
+
+func TestServiceApi_Run(t *testing.T) {
+	type fields struct {
+		rm runMock
+	}
+	type args struct {
+		path      string
+		stopAfter time.Duration
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantErr     bool
+		wantTimeout bool
+	}{
+		{name: "run succeeds", fields: fields{rm: runMock{}}, args: args{}, wantErr: false},
+		{name: "run fails", fields: fields{rm: runMock{Err: fmt.Errorf("some error")}}, args: args{}, wantErr: true},
+		{name: "run succeeds before timeout", fields: fields{rm: runMock{runDuration: 10 * time.Millisecond}}, args: args{stopAfter: 100 * time.Millisecond}, wantErr: false},
+		{name: "timeout stops run early", fields: fields{rm: runMock{runDuration: 100 * time.Millisecond}}, args: args{stopAfter: 10 * time.Millisecond}, wantErr: false, wantTimeout: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasTimeout := false
+			tt.fields.rm.hasTimeout = &hasTimeout
+			requestStop := make(chan bool, 1)
+			tt.fields.rm.requestStop = &requestStop
+
+			s := ServiceApi{
+				ServicePersistence: tt.fields.rm,
+				ServiceBuilder:     tt.fields.rm,
+			}
+			if err := s.Run(tt.args.path, tt.args.stopAfter); (err != nil) != tt.wantErr {
+				t.Errorf("ServiceApi.Run() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if hasTimeout != tt.wantTimeout {
+				t.Errorf("ServiceApi.Run() hasTimeout = %v, wantTimeout = %v", hasTimeout, tt.wantTimeout)
 			}
 		})
 	}
