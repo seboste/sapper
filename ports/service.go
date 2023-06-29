@@ -25,4 +25,5 @@ type ServiceBuilder interface {
 	Run(service Service, output io.Writer) error
 	Deploy(service Service, output io.Writer) error
 	Test(service Service, output io.Writer) error
+	Stop(service Service, output io.Writer) error
 }

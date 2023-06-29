@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	parameterResolver "github.com/seboste/sapper/adapters/parameter-resolver"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var serviceCmd = &cobra.Command{
 }
 
 var keepMajorVersion *bool
+var stopAfter *time.Duration
 
 var addServiceCmd = &cobra.Command{
 	Use:           "add [folder]",
@@ -97,7 +99,7 @@ var testServiceCmd = &cobra.Command{
 			return errors.New("service folder argument is missing")
 		}
 
-		fmt.Printf("tesing service...")
+		fmt.Printf("testing service...")
 		err := serviceApi.Test(args[0])
 		if err != nil {
 			return err
@@ -139,8 +141,8 @@ var runServiceCmd = &cobra.Command{
 			return errors.New("service folder argument is missing")
 		}
 
-		fmt.Printf("tesing service...")
-		err := serviceApi.Run(args[0])
+		fmt.Printf("running service...")
+		err := serviceApi.Run(args[0], *stopAfter)
 		if err != nil {
 			return err
 		} else {
@@ -165,14 +167,5 @@ func init() {
 	parameterResolver.RegisterSapperParameterResolver(addServiceCmd.PersistentFlags())
 
 	keepMajorVersion = upgradeServiceCmd.PersistentFlags().Bool("keep-major", false, "Upgrades are only conducted within the same major version of a dependency's semantic version")
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// brickCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// brickCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	stopAfter = runServiceCmd.PersistentFlags().Duration("stop-after", 0, "Stops the service after a specified time has elapsed. Can be used for e.g. smoke tests.")
 }

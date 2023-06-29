@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/seboste/sapper/ports"
 	"github.com/seboste/sapper/utils"
@@ -528,7 +529,7 @@ func (s ServiceApi) Test(path string) error {
 	if err != nil {
 		return err
 	}
-	return s.ServiceBuilder.Test(service, os.Stdout)
+	return s.ServiceBuilder.Test(service, s.Stdout)
 }
 
 func (s ServiceApi) Describe(path string, writer io.Writer) error {
@@ -564,15 +565,29 @@ func (s ServiceApi) Deploy(path string) error {
 	if err != nil {
 		return err
 	}
-	return s.ServiceBuilder.Deploy(service, os.Stdout)
+	return s.ServiceBuilder.Deploy(service, s.Stdout)
 }
 
-func (s ServiceApi) Run(path string) error {
+func (s ServiceApi) Run(path string, stopAfter time.Duration) error {
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
 		return err
 	}
-	return s.ServiceBuilder.Run(service, os.Stdout)
+
+	done := make(chan bool, 1)
+	go func() {
+		if stopAfter > 0 {
+			select {
+			case <-done:
+			case <-time.After(stopAfter):
+				s.ServiceBuilder.Stop(service, s.Stdout)
+			}
+		}
+	}()
+
+	err = s.ServiceBuilder.Run(service, s.Stdout)
+	done <- true
+	return err
 }
 
 var _ ports.ServiceApi = ServiceApi{}

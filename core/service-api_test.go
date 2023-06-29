@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/seboste/sapper/ports"
 )
@@ -630,6 +631,10 @@ func (udm upgradeDependencyMock) Deploy(service ports.Service, output io.Writer)
 	return nil
 }
 
+func (udm upgradeDependencyMock) Stop(service ports.Service, output io.Writer) error {
+	return nil
+}
+
 func TestServiceApi_upgradeDependency(t *testing.T) {
 	type fields struct {
 		udm upgradeDependencyMock
@@ -867,6 +872,87 @@ func Test_mergeLines(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := mergeLines(tt.args.base, tt.args.incoming); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("mergeLines() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type runMock struct {
+	Err         error
+	hasTimeout  *bool
+	requestStop *chan bool
+	runDuration time.Duration
+}
+
+func (rm runMock) Load(path string) (ports.Service, error) {
+	return ports.Service{}, nil
+}
+
+func (rm runMock) Save(service ports.Service) error {
+	return nil
+}
+func (rm runMock) Build(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Run(service ports.Service, output io.Writer) error {
+
+	if rm.runDuration > 0 {
+		select {
+		case <-*rm.requestStop:
+			*rm.hasTimeout = true
+		case <-time.After(rm.runDuration):
+			*rm.hasTimeout = false
+		}
+	}
+	return rm.Err
+}
+func (rm runMock) Deploy(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Test(service ports.Service, output io.Writer) error {
+	return nil
+}
+func (rm runMock) Stop(service ports.Service, output io.Writer) error {
+	*rm.requestStop <- true
+	return nil
+}
+
+func TestServiceApi_Run(t *testing.T) {
+	type fields struct {
+		rm runMock
+	}
+	type args struct {
+		path      string
+		stopAfter time.Duration
+	}
+	tests := []struct {
+		name        string
+		fields      fields
+		args        args
+		wantErr     bool
+		wantTimeout bool
+	}{
+		{name: "run succeeds", fields: fields{rm: runMock{}}, args: args{}, wantErr: false},
+		{name: "run fails", fields: fields{rm: runMock{Err: fmt.Errorf("some error")}}, args: args{}, wantErr: true},
+		{name: "run succeeds before timeout", fields: fields{rm: runMock{runDuration: 10 * time.Millisecond}}, args: args{stopAfter: 100 * time.Millisecond}, wantErr: false},
+		{name: "timeout stops run early", fields: fields{rm: runMock{runDuration: 100 * time.Millisecond}}, args: args{stopAfter: 10 * time.Millisecond}, wantErr: false, wantTimeout: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasTimeout := false
+			tt.fields.rm.hasTimeout = &hasTimeout
+			requestStop := make(chan bool, 1)
+			tt.fields.rm.requestStop = &requestStop
+
+			s := ServiceApi{
+				ServicePersistence: tt.fields.rm,
+				ServiceBuilder:     tt.fields.rm,
+			}
+			if err := s.Run(tt.args.path, tt.args.stopAfter); (err != nil) != tt.wantErr {
+				t.Errorf("ServiceApi.Run() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if hasTimeout != tt.wantTimeout {
+				t.Errorf("ServiceApi.Run() hasTimeout = %v, wantTimeout = %v", hasTimeout, tt.wantTimeout)
 			}
 		})
 	}

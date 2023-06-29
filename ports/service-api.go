@@ -1,6 +1,9 @@
 package ports
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 type ServiceApi interface {
 	Add(templateName string, parentDir string, parameterResolver ParameterResolver) (Service, error)
@@ -9,5 +12,5 @@ type ServiceApi interface {
 	Build(path string) (string, error)
 	Test(path string) error
 	Deploy(path string) error
-	Run(path string) error
+	Run(path string, stopAfter time.Duration) error
 }

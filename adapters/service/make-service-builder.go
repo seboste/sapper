@@ -30,5 +30,8 @@ func (ms MakeService) Run(s ports.Service, output io.Writer) error {
 func (ms MakeService) Deploy(s ports.Service, output io.Writer) error {
 	return execMake(s, "deploy", output)
 }
+func (ms MakeService) Stop(s ports.Service, output io.Writer) error {
+	return execMake(s, "stop", output)
+}
 
 var _ ports.ServiceBuilder = MakeService{}
