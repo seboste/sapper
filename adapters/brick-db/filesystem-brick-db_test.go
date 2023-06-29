@@ -86,6 +86,7 @@ dependencies :
 func TestFilesystemBrickDB_Bricks(t *testing.T) {
 	brickTemp := ports.Brick{Id: "test1_templ", Description: "desc", Kind: ports.BrickKind(ports.Template)}
 	brickExt := ports.Brick{Id: "test2_ext", Description: "desc", Kind: ports.BrickKind(ports.Extension)}
+	brickHelper := ports.Brick{Id: "test3_helper", Description: "desc", Kind: ports.BrickKind(ports.Helper)}
 
 	type fields struct {
 		bricks []ports.Brick
@@ -100,14 +101,19 @@ func TestFilesystemBrickDB_Bricks(t *testing.T) {
 		want   []ports.Brick
 	}{
 		{name: "filter extensions",
-			fields: fields{bricks: []ports.Brick{brickTemp, brickExt}},
+			fields: fields{bricks: []ports.Brick{brickTemp, brickExt, brickHelper}},
 			args:   args{kind: ports.Extension},
 			want:   []ports.Brick{brickExt},
 		},
 		{name: "filter template",
-			fields: fields{bricks: []ports.Brick{brickTemp, brickExt}},
+			fields: fields{bricks: []ports.Brick{brickTemp, brickExt, brickHelper}},
 			args:   args{kind: ports.Template},
 			want:   []ports.Brick{brickTemp},
+		},
+		{name: "filter helper",
+			fields: fields{bricks: []ports.Brick{brickTemp, brickExt, brickHelper}},
+			args:   args{kind: ports.Helper},
+			want:   []ports.Brick{brickHelper},
 		},
 	}
 	for _, tt := range tests {

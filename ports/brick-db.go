@@ -20,9 +20,10 @@ type BrickKind int
 const (
 	Template BrickKind = iota
 	Extension
+	Helper
 )
 
-var BrickKinds = []BrickKind{Template, Extension}
+var BrickKinds = []BrickKind{Template, Extension, Helper}
 
 type Brick struct {
 	Id           string
@@ -51,6 +52,7 @@ var (
 	brickKindMap = map[string]BrickKind{
 		"template":  BrickKind(Template),
 		"extension": BrickKind(Extension),
+		"helper":    BrickKind(Helper),
 	}
 )
 
@@ -65,6 +67,8 @@ func (bk BrickKind) String() string {
 		return "template"
 	case Extension:
 		return "extension"
+	case Helper:
+		return "helper"
 	default:
 		return fmt.Sprintf("%d", int(bk))
 	}
