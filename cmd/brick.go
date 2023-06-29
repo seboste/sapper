@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	parameterResolver "github.com/seboste/sapper/adapters/parameter-resolver"
 	"github.com/seboste/sapper/ports"
@@ -83,11 +84,26 @@ var searchBrickCmd = &cobra.Command{
 	},
 }
 
+var describeBrickCmd = &cobra.Command{
+	Use:           "describe [brickId]",
+	Short:         "Shows a brick's README.md for information about the usage, its parameters, and next steps",
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) < 1 {
+			return errors.New("brick id argument is missing")
+		}
+		brickId := args[0]
+		return brickApi.Describe(brickId, os.Stdout)
+	},
+}
+
 func init() {
 	brickCmd.AddCommand(addBrickCmd)
 	brickCmd.AddCommand(upgradeBrickCmd)
 	brickCmd.AddCommand(listBrickCmd)
 	brickCmd.AddCommand(searchBrickCmd)
+	brickCmd.AddCommand(describeBrickCmd)
 
 	rootCmd.AddCommand(brickCmd)
 

@@ -2,8 +2,10 @@ package core
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/seboste/sapper/ports"
@@ -214,6 +216,35 @@ func (b BrickApi) Search(term string) []ports.Brick {
 		}
 	}
 	return filteredBricks
+}
+
+func (b BrickApi) Describe(brickId string, writer io.Writer) error {
+	db, err := b.BrickDBFactory.MakeAggregatedBrickDB(b.Configuration.Remotes(), b.Configuration.DefaultRemotesDir())
+	if err != nil {
+		return err
+	}
+
+	brick, err := db.Brick(brickId)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Open(filepath.Join(brick.BasePath, "README.md"))
+	if err != nil {
+		return err
+	}
+
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	_, err = writer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var _ ports.BrickApi = BrickApi{}
