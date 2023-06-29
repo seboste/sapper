@@ -618,6 +618,18 @@ func (udm upgradeDependencyMock) Build(service ports.Service, output io.Writer) 
 	return nil
 }
 
+func (udm upgradeDependencyMock) Test(service ports.Service, output io.Writer) error {
+	return nil
+}
+
+func (udm upgradeDependencyMock) Run(service ports.Service, output io.Writer) error {
+	return nil
+}
+
+func (udm upgradeDependencyMock) Deploy(service ports.Service, output io.Writer) error {
+	return nil
+}
+
 func TestServiceApi_upgradeDependency(t *testing.T) {
 	type fields struct {
 		udm upgradeDependencyMock

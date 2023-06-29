@@ -523,8 +523,12 @@ func (s ServiceApi) Build(path string) (string, error) {
 
 }
 
-func (s ServiceApi) Test() {
-	fmt.Fprintln(s.Stdout, "test")
+func (s ServiceApi) Test(path string) error {
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
+	return s.ServiceBuilder.Test(service, os.Stdout)
 }
 
 func (s ServiceApi) Describe(path string, writer io.Writer) error {
@@ -555,8 +559,20 @@ func (s ServiceApi) Describe(path string, writer io.Writer) error {
 	return nil
 }
 
-func (s ServiceApi) Deploy() {
-	fmt.Fprintln(s.Stdout, "deploy")
+func (s ServiceApi) Deploy(path string) error {
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
+	return s.ServiceBuilder.Deploy(service, os.Stdout)
+}
+
+func (s ServiceApi) Run(path string) error {
+	service, err := s.ServicePersistence.Load(path)
+	if err != nil {
+		return err
+	}
+	return s.ServiceBuilder.Run(service, os.Stdout)
 }
 
 var _ ports.ServiceApi = ServiceApi{}

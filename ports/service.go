@@ -22,4 +22,7 @@ type ServicePersistence interface {
 
 type ServiceBuilder interface {
 	Build(service Service, output io.Writer) error
+	Run(service Service, output io.Writer) error
+	Deploy(service Service, output io.Writer) error
+	Test(service Service, output io.Writer) error
 }

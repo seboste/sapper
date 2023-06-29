@@ -7,6 +7,7 @@ type ServiceApi interface {
 	Describe(path string, writer io.Writer) error
 	Upgrade(path string, keepMajorVersion bool) error
 	Build(path string) (string, error)
-	Test()
-	Deploy()
+	Test(path string) error
+	Deploy(path string) error
+	Run(path string) error
 }
