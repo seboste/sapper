@@ -22,7 +22,7 @@ func main() {
 
 	dependencyManager := dependencyManager.ConanDependencyManager{}
 	servicePersistence := service.FileSystemServicePersistence{DependencyReader: dependencyManager}
-	ServiceBuilder := service.CMakeService{}
+	ServiceBuilder := service.MakeService{}
 
 	serviceApi := core.ServiceApi{
 		Configuration:      &config,
