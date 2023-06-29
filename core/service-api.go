@@ -345,8 +345,15 @@ func (s ServiceApi) upgradeDependencyToVersion(service ports.Service, d ports.Pa
 	if err != nil {
 		return buildLogFileName, err
 	}
-
-	return buildLogFileName, nil
+	f, err := ioutil.TempFile("", "sapper_test_log_*.log")
+	if err != nil {
+		return "", err
+	}
+	err = s.test(service.Path, f)
+	if err != nil {
+		return f.Name(), err
+	}
+	return buildLogFileName + ", " + f.Name(), nil
 }
 
 // sortedVersions must range from current version to latest version to be considered (must at least have one entry)
@@ -430,12 +437,12 @@ func (s ServiceApi) upgradeDependency(service ports.Service, d ports.PackageDepe
 
 		vus.latestWorking = findLatestWorkingVersion(semvers, func(v SemanticVersion) bool {
 			fmt.Fprintf(s.Stdout, "trying to upgrade to %v...", v)
-			buildLogFilename, err := s.upgradeDependencyToVersion(service, d, v.String())
+			logFilename, err := s.upgradeDependencyToVersion(service, d, v.String())
 			if err == nil {
 				fmt.Fprintf(s.Stdout, "success\n")
 				return true
 			} else {
-				fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
+				fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", logFilename)
 				return false
 			}
 		}).String()
@@ -475,6 +482,19 @@ func (s ServiceApi) Upgrade(path string, keepMajorVersion bool) error {
 	buildLogFilename, err := s.Build(path)
 	if err != nil {
 		fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", buildLogFilename)
+		return err
+	} else {
+		fmt.Fprintln(s.Stdout, "success")
+	}
+
+	fmt.Fprintf(s.Stdout, "testing service...")
+	f, err := ioutil.TempFile("", "sapper_test_log_*.log")
+	if err != nil {
+		return err
+	}
+	err = s.test(path, f)
+	if err != nil {
+		fmt.Fprintf(s.Stdout, "failed (see %s for details)\n", f.Name())
 		return err
 	} else {
 		fmt.Fprintln(s.Stdout, "success")
@@ -524,12 +544,16 @@ func (s ServiceApi) Build(path string) (string, error) {
 
 }
 
-func (s ServiceApi) Test(path string) error {
+func (s ServiceApi) test(path string, writer io.Writer) error {
 	service, err := s.ServicePersistence.Load(path)
 	if err != nil {
 		return err
 	}
-	return s.ServiceBuilder.Test(service, s.Stdout)
+	return s.ServiceBuilder.Test(service, writer)
+}
+
+func (s ServiceApi) Test(path string) error {
+	return s.test(path, s.Stdout)
 }
 
 func (s ServiceApi) Describe(path string, writer io.Writer) error {

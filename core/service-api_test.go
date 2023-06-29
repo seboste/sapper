@@ -560,6 +560,7 @@ func Test_filterSemvers(t *testing.T) {
 type versionBuildinfo struct {
 	Version         string
 	BuildSuccessful bool
+	TestSuccessful  bool
 }
 
 type upgradeDependencyMock struct {
@@ -620,6 +621,21 @@ func (udm upgradeDependencyMock) Build(service ports.Service, output io.Writer) 
 }
 
 func (udm upgradeDependencyMock) Test(service ports.Service, output io.Writer) error {
+	for _, d := range service.Dependencies {
+		dependencyFound := false
+		for _, v := range udm.AvailableVersionMap[d.Id] {
+			if v.Version == d.Version {
+				if !v.TestSuccessful {
+					return fmt.Errorf("test with %s in version %s failed", d.Id, d.Version)
+				} else {
+					dependencyFound = true
+				}
+			}
+		}
+		if !dependencyFound {
+			return fmt.Errorf("dependency %s not found", d.Id)
+		}
+	}
 	return nil
 }
 
@@ -654,7 +670,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 	}{
 		{name: "non semantic version dependency up to date", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -672,7 +688,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "non semantic version dependency upgrade", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -690,7 +706,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "non semantic version dependency upgrade not possible", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true}, {Version: "version B", BuildSuccessful: true}, {Version: "version C", BuildSuccessful: false}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "version A", BuildSuccessful: true, TestSuccessful: true}, {Version: "version B", BuildSuccessful: true, TestSuccessful: true}, {Version: "version C", BuildSuccessful: false, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "version A"},
 			},
 		}, args: args{
@@ -708,7 +724,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency up to date", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -726,7 +742,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -744,7 +760,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade keep major", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: true}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
@@ -762,7 +778,7 @@ func TestServiceApi_upgradeDependency(t *testing.T) {
 		},
 		{name: "semantic version dependency upgrade not fully possible", fields: fields{
 			udm: upgradeDependencyMock{
-				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true}, {Version: "2.0.0", BuildSuccessful: false}}},
+				AvailableVersionMap: map[string][]versionBuildinfo{"lib": {{Version: "1.0.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "1.1.0", BuildSuccessful: true, TestSuccessful: true}, {Version: "2.0.0", BuildSuccessful: true, TestSuccessful: false}}},
 				VersionMap:          map[string]string{"lib": "1.0.0"},
 			},
 		}, args: args{
