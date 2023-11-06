@@ -10,6 +10,8 @@ Sapper is **CLI** tool that enables you to rapidly create, extend, and update **
 - support for AWS, Azure, and GCP
 - ...
 
+![hexagonal architecture diagram](sapper-animation.gif)
+
 ## Foundation
 
 Besides using **C++**, the microservices that can be created with Sapper are constrained by the following:
